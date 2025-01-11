@@ -283,7 +283,9 @@
                 
                 inputWorkletNode.port.onmessage = (e) => {
                     if (e.data.type === 'audio_data') {
-                        sendVoiceMessage(e.data.base64);
+                        // Convert raw buffer to base64 in main thread
+                        const base64 = arrayBufferToBase64(e.data.buffer);
+                        sendVoiceMessage(base64);
                     }
                 };
                 
@@ -293,6 +295,15 @@
                 console.error("Failed to initialize audio worklet:", error);
                 workletInitialized = false;
             }
+        }
+
+        function arrayBufferToBase64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
         }
 
         function base64ToArrayBuffer(base64) {
@@ -376,7 +387,9 @@
 
             // Start the audio processing interval
             interval = setInterval(() => {
-                inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                if (inputWorkletNode && inputWorkletNode.port) {
+                    inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                }
             }, 1000);
 
             console.log("Audio input started successfully");

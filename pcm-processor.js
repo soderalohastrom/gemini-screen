@@ -17,14 +17,12 @@ class PCMProcessor extends AudioWorkletProcessor {
                     this.inputBuffer.forEach((value, index) => {
                         view.setInt16(index * 2, value * 0x7fff, true);
                     });
-
-                    // Convert to base64 directly in the worklet
-                    const base64 = this.arrayBufferToBase64(buffer);
                     
+                    // Send raw buffer to main thread for base64 conversion
                     this.port.postMessage({
                         type: 'audio_data',
-                        base64: base64
-                    });
+                        buffer: buffer
+                    }, [buffer]); // Transfer buffer ownership
                     
                     this.inputBuffer = new Float32Array();
                     this.inputSampleCount = 0;
@@ -38,15 +36,6 @@ class PCMProcessor extends AudioWorkletProcessor {
                 this.outputBuffer = newBuffer;
             }
         };
-    }
-
-    arrayBufferToBase64(buffer) {
-        const bytes = new Uint8Array(buffer);
-        let binary = '';
-        for (let i = 0; i < bytes.length; i++) {
-            binary += String.fromCharCode(bytes[i]);
-        }
-        return btoa(binary);
     }
 
     process(inputs, outputs, parameters) {
