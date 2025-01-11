@@ -76,7 +76,7 @@
             background: var(--bg-secondary);
             box-shadow: var(--outset-shadow);
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
             position: fixed;
             top: 0;
@@ -89,7 +89,8 @@
         .header-group {
             display: flex;
             align-items: center;
-            gap: 2rem;
+            gap: 3rem;
+            margin: 0 auto;
         }
 
         .header.collapsed {
@@ -231,14 +232,14 @@
 <body>
     <header class="header">
         <div class="header-group">
-            <h1 class="app-title">Screen Buddy</h1>
             <button id="screenShareButton" class="control-button">
                 <i class="material-icons">screen_share</i>
             </button>
+            <h1 class="app-title">Screen Buddy</h1>
+            <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">
+                <span class="material-icons">dark_mode</span>
+            </button>
         </div>
-        <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">
-            <span class="material-icons">dark_mode</span>
-        </button>
     </header>
 
     <main class="main-content">
