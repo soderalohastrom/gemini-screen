@@ -210,10 +210,9 @@
 
                 webSocket.onopen = async (event) => {
                     console.log("websocket open: ", event);
-                    // Wait a brief moment before sending setup message
-                    await new Promise(resolve => setTimeout(resolve, 100));
-                    sendInitialSetupMessage();
                     isWebSocketReady = true;
+                    // Send setup message immediately after setting ready state
+                    sendInitialSetupMessage();
                     resolve();
                 };
 
