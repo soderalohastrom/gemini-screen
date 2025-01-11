@@ -21,10 +21,14 @@ async def main():
     
     runner = web.AppRunner(app)
     await runner.setup()
-    # Changed from localhost to 0.0.0.0 to allow external connections
-    site = web.TCPSite(runner, '0.0.0.0', 8080)
-    print("Server started at http://0.0.0.0:8080")
-    await site.start()
+    # Listen on both Unix socket and TCP
+    unix_site = web.UnixSite(runner, '/tmp/gemini-screen.sock')
+    tcp_site = web.TCPSite(runner, '0.0.0.0', 8080)
+    
+    print("Server starting...")
+    await unix_site.start()
+    await tcp_site.start()
+    print("Server started on Unix socket and TCP port 8080")
     
     try:
         await asyncio.Future()  # run forever
@@ -34,4 +38,7 @@ async def main():
         await runner.cleanup()
 
 if __name__ == "__main__":
+    # Ensure socket file permissions
+    if os.path.exists('/tmp/gemini-screen.sock'):
+        os.remove('/tmp/gemini-screen.sock')
     asyncio.run(main())
