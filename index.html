@@ -76,23 +76,96 @@
     </div>
 
     <script defer>
-        // Single AudioContext instance for both input and output
+        // Audio context and stream management
         let audioContext = null;
         let audioStream = null;
         let workletInitialized = false;
+        let audioQualityMonitor = {
+            lastCheckTime: 0,
+            sampleCount: 0,
+            clippingCount: 0,
+            underrunCount: 0,
+            overrunCount: 0
+        };
         
-        // Initialize AudioContext on user gesture
-        async function initAudioContext(sampleRate = 16000) {
-            if (!audioContext) {
-                audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                    sampleRate: sampleRate
-                });
-                await initializeAudioWorklet();
+        // Initialize AudioContext with proper sample rate handling
+        async function initAudioContext(preferredSampleRate = 16000) {
+            try {
+                if (!audioContext) {
+                    // Try to match device capabilities
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const audioDevice = devices.find(device => device.kind === 'audioinput');
+                    
+                    if (audioDevice) {
+                        const constraints = {
+                            audio: {
+                                deviceId: audioDevice.deviceId,
+                                sampleRate: { ideal: preferredSampleRate }
+                            }
+                        };
+                        
+                        // Test device capabilities
+                        const testStream = await navigator.mediaDevices.getUserMedia(constraints);
+                        const track = testStream.getAudioTracks()[0];
+                        const capabilities = track.getCapabilities();
+                        testStream.getTracks().forEach(track => track.stop());
+                        
+                        // Use supported sample rate
+                        const sampleRate = capabilities.sampleRate?.max >= preferredSampleRate ?
+                            preferredSampleRate : capabilities.sampleRate?.max || 44100;
+                        
+                        console.log(`Using sample rate: ${sampleRate}Hz`);
+                        
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                            sampleRate: sampleRate,
+                            latencyHint: 'interactive'
+                        });
+                        
+                        await initializeAudioWorklet();
+                    } else {
+                        throw new Error('No audio input device found');
+                    }
+                }
+                
+                if (audioContext.state === "suspended") {
+                    await audioContext.resume();
+                }
+                
+                return audioContext;
+            } catch (error) {
+                console.error('Error initializing audio context:', error);
+                throw error;
             }
-            if (audioContext.state === "suspended") {
-                await audioContext.resume();
+        }
+
+        // Monitor audio quality
+        function updateAudioQualityMetrics(audioData) {
+            const now = performance.now();
+            if (now - audioQualityMonitor.lastCheckTime > 1000) {
+                const metrics = {
+                    timestamp: new Date().toISOString(),
+                    clippingRatio: audioQualityMonitor.clippingCount / audioQualityMonitor.sampleCount,
+                    underrunCount: audioQualityMonitor.underrunCount,
+                    overrunCount: audioQualityMonitor.overrunCount
+                };
+                
+                console.log('Audio Quality Metrics:', metrics);
+                
+                // Reset counters
+                audioQualityMonitor.lastCheckTime = now;
+                audioQualityMonitor.sampleCount = 0;
+                audioQualityMonitor.clippingCount = 0;
+                audioQualityMonitor.underrunCount = 0;
+                audioQualityMonitor.overrunCount = 0;
             }
-            return audioContext;
+            
+            // Update metrics
+            audioQualityMonitor.sampleCount += audioData.length;
+            audioData.forEach(sample => {
+                if (Math.abs(sample) > 0.95) {
+                    audioQualityMonitor.clippingCount++;
+                }
+            });
         }
 
         const URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}/ws`;
@@ -334,6 +407,7 @@
 
         async function startAudioInput() {
             try {
+                // Initialize audio context with device-compatible sample rate
                 await initAudioContext();
 
                 // Close any existing audio stream
@@ -341,59 +415,69 @@
                     audioStream.getTracks().forEach(track => track.stop());
                 }
 
-                // Get new audio stream with matching sample rate
+                // Get supported constraints
+                const deviceCapabilities = await navigator.mediaDevices.getSupportedConstraints();
+                const audioConstraints = {
+                    channelCount: 1,
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                };
+
+                // Add sample rate if supported
+                if (deviceCapabilities.sampleRate) {
+                    audioConstraints.sampleRate = { ideal: audioContext.sampleRate };
+                }
+
+                // Get new audio stream
                 audioStream = await navigator.mediaDevices.getUserMedia({
-                    audio: {
-                        channelCount: 1,
-                        sampleRate: { exact: 16000 },
-                        echoCancellation: true,
-                        noiseSuppression: true,
-                    },
+                    audio: audioConstraints
                 });
 
+                // Create and configure audio source
                 const source = audioContext.createMediaStreamSource(audioStream);
-                source.connect(inputWorkletNode);
+                
+                // Add gain node for volume control
+                const gainNode = audioContext.createGain();
+                gainNode.gain.value = 1.0; // Adjustable gain
+                source.connect(gainNode);
+                gainNode.connect(inputWorkletNode);
 
+                // Inform worklet about actual sample rate
+                const streamSettings = audioStream.getAudioTracks()[0].getSettings();
+                inputWorkletNode.port.postMessage({
+                    type: 'set_sample_rate',
+                    sampleRate: streamSettings.sampleRate
+                });
+
+                // Set up buffer processing with dynamic interval
+                const bufferInterval = Math.floor(1000 * (2048 / audioContext.sampleRate));
                 interval = setInterval(() => {
-                    if (inputWorkletNode && inputWorkletNode.port) {
+                    if (inputWorkletNode?.port) {
                         inputWorkletNode.port.postMessage({ type: 'get_buffer' });
                     }
-                }, 1000); // Reduced interval for more responsive audio
+                }, bufferInterval);
 
-                console.log("Audio input started successfully");
+                // Add audio quality monitoring
+                const analyzerNode = audioContext.createAnalyser();
+                analyzerNode.fftSize = 2048;
+                source.connect(analyzerNode);
+                
+                const monitorInterval = setInterval(() => {
+                    const dataArray = new Float32Array(analyzerNode.frequencyBinCount);
+                    analyzerNode.getFloatTimeDomainData(dataArray);
+                    updateAudioQualityMetrics(dataArray);
+                }, 1000);
+
+                console.log(`Audio input started successfully:
+                    Sample Rate: ${streamSettings.sampleRate}Hz
+                    Buffer Interval: ${bufferInterval}ms
+                    Monitoring: Active`);
+                
             } catch (error) {
                 console.error("Error starting audio input:", error);
-                // If exact sample rate is not supported, try without it
-                if (error.name === 'OverconstrainedError') {
-                    try {
-                        audioStream = await navigator.mediaDevices.getUserMedia({
-                            audio: {
-                                channelCount: 1,
-                                echoCancellation: true,
-                                noiseSuppression: true,
-                            },
-                        });
-
-                        // Get the actual sample rate
-                        const streamSettings = audioStream.getAudioTracks()[0].getSettings();
-                        console.log("Using native sample rate:", streamSettings.sampleRate);
-                        
-                        // Create new context with matching sample rate
-                        await initAudioContext(streamSettings.sampleRate);
-                        const source = audioContext.createMediaStreamSource(audioStream);
-                        source.connect(inputWorkletNode);
-
-                        interval = setInterval(() => {
-                            if (inputWorkletNode && inputWorkletNode.port) {
-                                inputWorkletNode.port.postMessage({ type: 'get_buffer' });
-                            }
-                        }, 1000);
-
-                        console.log("Audio input started with native sample rate:", streamSettings.sampleRate);
-                    } catch (fallbackError) {
-                        console.error("Error starting audio with fallback:", fallbackError);
-                    }
-                }
+                displayMessage("Error: Could not start audio input. Please check your microphone settings.");
+                throw error;
             }
         }
 
