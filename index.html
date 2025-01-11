@@ -266,7 +266,7 @@
             try {
                 await audioContext.audioWorklet.addModule("pcm-processor.js");
                 
-                // Create output worklet node for playback
+                // Create output worklet node
                 audioWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
                     processorOptions: {
                         mode: 'output'
@@ -274,16 +274,14 @@
                 });
                 audioWorkletNode.connect(audioContext.destination);
                 
-                // Create input worklet node for recording
+                // Create input worklet node
                 inputWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
                     processorOptions: {
                         mode: 'input'
                     }
                 });
-                
                 inputWorkletNode.port.onmessage = (e) => {
                     if (e.data.type === 'audio_data') {
-                        // Convert raw buffer to base64 in main thread
                         const base64 = arrayBufferToBase64(e.data.buffer);
                         sendVoiceMessage(base64);
                     }
@@ -295,15 +293,6 @@
                 console.error("Failed to initialize audio worklet:", error);
                 workletInitialized = false;
             }
-        }
-
-        function arrayBufferToBase64(buffer) {
-            const bytes = new Uint8Array(buffer);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            return btoa(binary);
         }
 
         function base64ToArrayBuffer(base64) {
@@ -328,11 +317,12 @@
 
         async function ingestAudioChunkToPlay(base64AudioChunk) {
             try {
-                if (!audioContext || audioContext.state === "closed") {
-                    await initAudioContext();
+                if (audioContext.state === "suspended") {
+                    await audioContext.resume();
                 }
                 const arrayBuffer = base64ToArrayBuffer(base64AudioChunk);
                 const float32Data = convertPCM16LEToFloat32(arrayBuffer);
+
                 audioWorkletNode.port.postMessage(float32Data);
             } catch (error) {
                 console.error("Error processing audio chunk:", error);
@@ -341,26 +331,36 @@
 
         async function startAudioInput() {
             try {
-                // Try with exact sample rate first
+                await initAudioContext();
+
+                // Close any existing audio stream
+                if (audioStream) {
+                    audioStream.getTracks().forEach(track => track.stop());
+                }
+
+                // Get new audio stream with matching sample rate
                 audioStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         channelCount: 1,
-                        sampleRate: { exact: 16000 },
+                        sampleRate: { exact: 16000 },  // Force exact sample rate
                         echoCancellation: true,
                         noiseSuppression: true,
                     },
                 });
 
-                await initAudioContext(16000);
                 const source = audioContext.createMediaStreamSource(audioStream);
                 source.connect(inputWorkletNode);
 
+                interval = setInterval(() => {
+                    inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                }, 1000); // Reduced interval for more responsive audio
+
+                console.log("Audio input started successfully");
             } catch (error) {
                 console.error("Error starting audio input:", error);
-                
+                // If exact sample rate is not supported, try without it
                 if (error.name === 'OverconstrainedError') {
                     try {
-                        // Get audio stream with default sample rate
                         audioStream = await navigator.mediaDevices.getUserMedia({
                             audio: {
                                 channelCount: 1,
@@ -378,21 +378,16 @@
                         const source = audioContext.createMediaStreamSource(audioStream);
                         source.connect(inputWorkletNode);
 
+                        interval = setInterval(() => {
+                            inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                        }, 1000);
+
+                        console.log("Audio input started with native sample rate:", streamSettings.sampleRate);
                     } catch (fallbackError) {
                         console.error("Error starting audio with fallback:", fallbackError);
-                        return;
                     }
                 }
             }
-
-            // Start the audio processing interval
-            interval = setInterval(() => {
-                if (inputWorkletNode && inputWorkletNode.port) {
-                    inputWorkletNode.port.postMessage({ type: 'get_buffer' });
-                }
-            }, 1000);
-
-            console.log("Audio input started successfully");
         }
 
         function stopAudioInput() {
