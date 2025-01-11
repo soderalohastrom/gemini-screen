@@ -2,7 +2,7 @@ class PCMProcessor extends AudioWorkletProcessor {
     constructor(options) {
         super();
         this.mode = options.processorOptions?.mode || 'output';
-        this.targetSampleRate = 48000; // Changed to standard high-quality audio rate
+        this.targetSampleRate = 48000; // Standard high-quality audio rate
         this.outputBuffer = new Float32Array();
         this.inputBuffer = new Float32Array();
         this.inputSampleCount = 0;
@@ -50,39 +50,24 @@ class PCMProcessor extends AudioWorkletProcessor {
             return audioData;
         }
 
-        // Apply anti-aliasing filter before resampling
-        const filteredData = this.applyAntiAliasingFilter(audioData);
+        // Apply anti-aliasing filter before resampling if downsampling
+        const shouldFilter = fromSampleRate > toSampleRate;
+        const filteredData = shouldFilter ? this.applyAntiAliasingFilter(audioData) : audioData;
         
         const ratio = fromSampleRate / toSampleRate;
         const newLength = Math.round(audioData.length / ratio);
         const result = new Float32Array(newLength);
 
-        // Cubic interpolation for better quality
+        // Linear interpolation for better performance and less artifacts
         for (let i = 0; i < newLength; i++) {
             const position = i * ratio;
             const index = Math.floor(position);
             const fraction = position - index;
 
-            if (index > 0 && index < filteredData.length - 2) {
-                // Cubic interpolation coefficients
-                const a0 = filteredData[index - 1];
-                const a1 = filteredData[index];
-                const a2 = filteredData[index + 1];
-                const a3 = filteredData[index + 2];
+            const current = filteredData[index] || 0;
+            const next = filteredData[index + 1] || current;
 
-                // Cubic interpolation
-                const mu2 = fraction * fraction;
-                const mu3 = mu2 * fraction;
-
-                result[i] = (a3 - a2 - a0 + a1) * mu3 +
-                           (2.0 * a0 - 5.0 * a1 + 4.0 * a2 - a3) * mu2 +
-                           (a2 - a0) * fraction +
-                           2.0 * a1;
-                result[i] *= 0.5; // Scale to prevent clipping
-            } else {
-                // Fall back to linear interpolation at edges
-                result[i] = filteredData[index];
-            }
+            result[i] = current + fraction * (next - current);
         }
 
         return result;
@@ -91,16 +76,16 @@ class PCMProcessor extends AudioWorkletProcessor {
     processInputBuffer() {
         if (this.inputBuffer.length > 0) {
             let dataToSend = this.inputBuffer;
+            
+            // Convert from input sample rate to target sample rate
             if (sampleRate !== this.targetSampleRate) {
-                dataToSend = this.resampleAudio(this.inputBuffer, sampleRate, this.targetSampleRate);
+                dataToSend = this.resampleAudio(dataToSend, sampleRate, this.targetSampleRate);
             }
-
-            // Apply dynamic range compression
-            dataToSend = this.applyCompression(dataToSend);
 
             const buffer = new ArrayBuffer(dataToSend.length * 2);
             const view = new DataView(buffer);
             
+            // Simple clipping prevention
             dataToSend.forEach((value, index) => {
                 const clampedValue = Math.max(-1, Math.min(1, value));
                 view.setInt16(index * 2, clampedValue * 0x7fff, true);
@@ -117,27 +102,20 @@ class PCMProcessor extends AudioWorkletProcessor {
         }
     }
 
-    applyCompression(data) {
-        const threshold = 0.5;
-        const ratio = 4;
-        return data.map(sample => {
-            if (Math.abs(sample) > threshold) {
-                const excess = Math.abs(sample) - threshold;
-                const compressed = threshold + excess / ratio;
-                return Math.sign(sample) * compressed;
-            }
-            return sample;
-        });
-    }
-
     handleOutputData(newData) {
         let processedData = newData;
+        
+        // Convert from target sample rate to output sample rate
         if (sampleRate !== this.targetSampleRate) {
-            processedData = this.resampleAudio(newData, this.targetSampleRate, sampleRate);
+            console.log(`Converting from ${this.targetSampleRate}Hz to ${sampleRate}Hz`);
+            processedData = this.resampleAudio(processedData, sampleRate, this.targetSampleRate);
         }
 
-        // Apply compression for consistent volume
-        processedData = this.applyCompression(processedData);
+        // Simple normalization to prevent clipping
+        const maxAmp = Math.max(...processedData.map(Math.abs));
+        if (maxAmp > 1) {
+            processedData = processedData.map(s => s / maxAmp);
+        }
 
         const newBuffer = new Float32Array(this.outputBuffer.length + processedData.length);
         newBuffer.set(this.outputBuffer);
@@ -189,7 +167,7 @@ class PCMProcessor extends AudioWorkletProcessor {
                 const outputChannel = output[0];
                 
                 if (this.outputBuffer.length >= outputChannel.length) {
-                    const fadeLength = Math.min(256, outputChannel.length);
+                    const fadeLength = Math.min(128, outputChannel.length / 8);
                     const processedBuffer = this.applyCrossFade(
                         this.outputBuffer.slice(0, outputChannel.length),
                         fadeLength
@@ -200,7 +178,7 @@ class PCMProcessor extends AudioWorkletProcessor {
                 } else {
                     outputChannel.fill(0);
                     if (this.outputBuffer.length > 0) {
-                        const fadeLength = Math.min(256, this.outputBuffer.length);
+                        const fadeLength = Math.min(128, this.outputBuffer.length / 8);
                         const processedBuffer = this.applyCrossFade(
                             this.outputBuffer,
                             fadeLength
