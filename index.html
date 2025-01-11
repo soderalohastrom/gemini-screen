@@ -78,6 +78,7 @@
     <script defer>
         // Single AudioContext instance for both input and output
         let audioContext = null;
+        let audioStream = null;
         
         // Initialize AudioContext on user gesture
         async function initAudioContext() {
@@ -320,16 +321,23 @@
         async function startAudioInput() {
             try {
                 await initAudioContext();
-                const stream = await navigator.mediaDevices.getUserMedia({
+
+                // Close any existing audio stream
+                if (audioStream) {
+                    audioStream.getTracks().forEach(track => track.stop());
+                }
+
+                // Get new audio stream with matching sample rate
+                audioStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         channelCount: 1,
-                        sampleRate: 16000,
+                        sampleRate: { exact: 16000 },  // Force exact sample rate
                         echoCancellation: true,
                         noiseSuppression: true,
                     },
                 });
 
-                const source = audioContext.createMediaStreamSource(stream);
+                const source = audioContext.createMediaStreamSource(audioStream);
                 source.connect(inputWorkletNode);
 
                 interval = setInterval(() => {
@@ -339,10 +347,44 @@
                 console.log("Audio input started successfully");
             } catch (error) {
                 console.error("Error starting audio input:", error);
+                // If exact sample rate is not supported, try without it
+                if (error.name === 'OverconstrainedError') {
+                    try {
+                        audioStream = await navigator.mediaDevices.getUserMedia({
+                            audio: {
+                                channelCount: 1,
+                                echoCancellation: true,
+                                noiseSuppression: true,
+                            },
+                        });
+
+                        // Create a new AudioContext with the stream's sample rate
+                        const streamSettings = audioStream.getAudioTracks()[0].getSettings();
+                        audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                            sampleRate: streamSettings.sampleRate
+                        });
+
+                        await initializeAudioWorklet();
+                        const source = audioContext.createMediaStreamSource(audioStream);
+                        source.connect(inputWorkletNode);
+
+                        interval = setInterval(() => {
+                            inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                        }, 1000);
+
+                        console.log("Audio input started with native sample rate:", streamSettings.sampleRate);
+                    } catch (fallbackError) {
+                        console.error("Error starting audio with fallback:", fallbackError);
+                    }
+                }
             }
         }
 
         function stopAudioInput() {
+            if (audioStream) {
+                audioStream.getTracks().forEach(track => track.stop());
+                audioStream = null;
+            }
             if (inputWorkletNode) {
                 inputWorkletNode.disconnect();
             }
