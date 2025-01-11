@@ -205,6 +205,8 @@
 
         #chatLog p.gemini {
             border-left: 4px solid var(--accent-primary);
+            padding-left: 1rem;
+            margin-left: 0.5rem;
         }
 
         /* Theme Toggle */
@@ -589,8 +591,6 @@
 
             if (response.text) {
                 console.log("Received text response:", response.text);
-                const chatLog = document.getElementById('chatLog');
-                console.log("ChatLog element:", chatLog);
                 displayMessage("GEMINI: " + response.text);
             }
             if (response.audioData) {
@@ -626,6 +626,7 @@
                     }
                 };
                 
+                workletInitialized = true;
                 initialized = true;
                 console.log("Audio worklet initialized successfully");
             } catch (error) {
