@@ -77,9 +77,21 @@
 
     <script defer>
         // Single AudioContext instance for both input and output
-        let audioContext = new (window.AudioContext || window.webkitAudioContext)({
-            sampleRate: 16000  // Match the input sample rate
-        });
+        let audioContext = null;
+        
+        // Initialize AudioContext on user gesture
+        async function initAudioContext() {
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: 16000  // Match the input sample rate
+                });
+                await initializeAudioWorklet();
+            }
+            if (audioContext.state === "suspended") {
+                await audioContext.resume();
+            }
+            return audioContext;
+        }
 
         const URL = `wss://${window.location.hostname}/ws`;
         const video = document.getElementById("videoElement");
@@ -91,7 +103,6 @@
         // Initialize context here
         window.addEventListener("load", async () => {
             context = canvas.getContext("2d");
-            await initializeAudioWorklet();
             await connect();
             setInterval(captureImage, 3000);
         });
@@ -247,16 +258,24 @@
             try {
                 await audioContext.audioWorklet.addModule("pcm-processor.js");
                 
-                // Create output worklet node
-                audioWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor");
+                // Create output worklet node for playback
+                audioWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
+                    processorOptions: {
+                        mode: 'output'
+                    }
+                });
                 audioWorkletNode.connect(audioContext.destination);
                 
-                // Create input worklet node
-                inputWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor");
+                // Create input worklet node for recording
+                inputWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
+                    processorOptions: {
+                        mode: 'input'
+                    }
+                });
+                
                 inputWorkletNode.port.onmessage = (e) => {
                     if (e.data.type === 'audio_data') {
-                        const base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(e.data.buffer)));
-                        sendVoiceMessage(base64);
+                        sendVoiceMessage(e.data.base64);
                     }
                 };
                 
@@ -289,12 +308,9 @@
 
         async function ingestAudioChunkToPlay(base64AudioChunk) {
             try {
-                if (audioContext.state === "suspended") {
-                    await audioContext.resume();
-                }
+                await initAudioContext();
                 const arrayBuffer = base64ToArrayBuffer(base64AudioChunk);
                 const float32Data = convertPCM16LEToFloat32(arrayBuffer);
-
                 audioWorkletNode.port.postMessage(float32Data);
             } catch (error) {
                 console.error("Error processing audio chunk:", error);
@@ -303,14 +319,13 @@
 
         async function startAudioInput() {
             try {
-                if (audioContext.state === "suspended") {
-                    await audioContext.resume();
-                }
-
+                await initAudioContext();
                 const stream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         channelCount: 1,
                         sampleRate: 16000,
+                        echoCancellation: true,
+                        noiseSuppression: true,
                     },
                 });
 
@@ -319,7 +334,7 @@
 
                 interval = setInterval(() => {
                     inputWorkletNode.port.postMessage({ type: 'get_buffer' });
-                }, 3000);
+                }, 1000); // Reduced interval for more responsive audio
 
                 console.log("Audio input started successfully");
             } catch (error) {
@@ -351,9 +366,6 @@
         // Add click handlers with user gesture handling
         startButton.addEventListener('click', async () => {
             try {
-                if (audioContext.state === "suspended") {
-                    await audioContext.resume();
-                }
                 await startAudioInput();
             } catch (error) {
                 console.error("Error starting audio:", error);
