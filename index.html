@@ -580,28 +580,14 @@
         }
 
         function receiveMessage(event) {
-            console.log("Raw message event:", event);
             const messageData = JSON.parse(event.data);
-            console.log("Parsed message data:", messageData);
-            
             const response = new Response(messageData);
-            console.log("Response object:", response);
 
-            // Handle text response if present
             if (response.text) {
-                console.log("Processing text response:", response.text);
                 displayMessage("GEMINI: " + response.text);
             }
-
-            // Handle audio response if present
             if (response.audioData) {
-                console.log("Processing audio data, length:", response.audioData.length);
-                try {
-                    ingestAudioChunkToPlay(response.audioData);
-                    console.log("Audio data sent to worklet for playback");
-                } catch (error) {
-                    console.error("Error playing audio:", error);
-                }
+                ingestAudioChunkToPlay(response.audioData);
             }
         }
 
@@ -814,19 +800,15 @@
 
         class Response {
             constructor(data) {
-                console.log("Creating Response from data:", data);
-                
                 this.text = null;
                 this.audioData = null;
                 this.endOfTurn = null;
 
                 if (data.text) {
-                    console.log("Found text:", data.text);
-                    this.text = data.text;
+                    this.text = data.text
                 }
 
                 if (data.audio) {
-                    console.log("Found audio data");
                     this.audioData = data.audio;
                 }
             }
