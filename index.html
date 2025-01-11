@@ -548,11 +548,8 @@
             console.log("sending setup message");
             const setup_client_message = {
                 setup: {
-                    model: "models/gemini-2.0-flash-exp",
-                    generation_config: { 
-                        response_modalities: ["AUDIO"]
-                    }
-                }
+                    generation_config: { response_modalities: ["AUDIO"] },
+                },
             };
 
             webSocket.send(JSON.stringify(setup_client_message));
