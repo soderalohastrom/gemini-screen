@@ -497,19 +497,31 @@
             return float32;
         }
 
-        function ingestAudioChunkToPlay(base64AudioChunk) {
-            if (!audioContext) return;
-            
-            const audioData = base64ToArrayBuffer(base64AudioChunk);
-            const float32Data = convertPCM16LEToFloat32(audioData);
-            
-            const audioBuffer = audioContext.createBuffer(1, float32Data.length, audioContext.sampleRate);
-            audioBuffer.getChannelData(0).set(float32Data);
-            
-            const source = audioContext.createBufferSource();
-            source.buffer = audioBuffer;
-            source.connect(audioContext.destination);
-            source.start();
+        async function ingestAudioChunkToPlay(base64AudioChunk) {
+            try {
+                if (!audioContext || !workletInitialized) {
+                    console.warn('Audio context or worklet not ready');
+                    return;
+                }
+
+                if (audioContext.state === "suspended") {
+                    await audioContext.resume();
+                }
+
+                const arrayBuffer = base64ToArrayBuffer(base64AudioChunk);
+                const float32Data = convertPCM16LEToFloat32(arrayBuffer);
+
+                if (!audioWorkletNode) {
+                    audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-processor', {
+                        processorOptions: { mode: 'output' }
+                    });
+                    audioWorkletNode.connect(audioContext.destination);
+                }
+
+                audioWorkletNode.port.postMessage(float32Data);
+            } catch (error) {
+                console.error("Error processing audio chunk:", error);
+            }
         }
 
         async function startAudioInput() {
