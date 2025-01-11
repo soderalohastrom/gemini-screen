@@ -1,239 +1,26 @@
 class PCMProcessor extends AudioWorkletProcessor {
-    constructor(options) {
+    constructor() {
         super();
-        this.mode = options.processorOptions?.mode || 'output';
-        this.targetSampleRate = 16000; // Match input sample rate
-        this.outputBuffer = new Float32Array();
-        this.inputBuffer = new Float32Array();
-        this.inputSampleCount = 0;
-        this.BUFFER_SIZE = 1024;
-        this.MAX_BUFFER_SIZE = 16000;
-        this.lastSampleRate = null;
-        this.currentSampleRate = null;
-        
-        // Adjusted filter coefficients to allow more high frequencies
-        this.filterCoeff = new Float32Array([0.1, 0.8, 0.1]);
-        
-        // High-frequency boost filter (subtle boost around 2-3kHz)
-        this.highBoostFilter = {
-            prevInput: 0,
-            prevOutput: 0,
-            coefficient: 0.2  // Adjust for more/less boost
-        };
-        
+        this.buffer = new Float32Array();
+
+        // Handle incoming audio data
         this.port.onmessage = (e) => {
-            if (this.mode === 'input' && e.data.type === 'get_buffer') {
-                this.processInputBuffer();
-            } else if (this.mode === 'output' && e.data instanceof Float32Array) {
-                this.handleOutputData(e.data);
-            } else if (e.data.type === 'set_sample_rate') {
-                this.handleSampleRateChange(e.data.sampleRate);
-            }
+            const newData = e.data;
+            const newBuffer = new Float32Array(this.buffer.length + newData.length);
+            newBuffer.set(this.buffer);
+            newBuffer.set(newData, this.buffer.length);
+            this.buffer = newBuffer;
         };
-
-        this.currentSampleRate = sampleRate;
-        console.log(`Initial system sample rate: ${this.currentSampleRate}Hz`);
-    }
-
-    handleSampleRateChange(newSampleRate) {
-        if (this.lastSampleRate !== newSampleRate) {
-            console.log(`Sample rate changed from ${this.lastSampleRate} to ${newSampleRate}`);
-            this.lastSampleRate = newSampleRate;
-            this.currentSampleRate = newSampleRate;
-        }
-    }
-
-    applyAntiAliasingFilter(data) {
-        const filtered = new Float32Array(data.length);
-        for (let i = 1; i < data.length - 1; i++) {
-            filtered[i] = this.filterCoeff[0] * data[i-1] + 
-                         this.filterCoeff[1] * data[i] + 
-                         this.filterCoeff[2] * data[i+1];
-        }
-        filtered[0] = data[0];
-        filtered[data.length - 1] = data[data.length - 1];
-        return filtered;
-    }
-
-    applyHighFrequencyBoost(data) {
-        const result = new Float32Array(data.length);
-        
-        for (let i = 0; i < data.length; i++) {
-            // Simple high-shelf filter
-            const input = data[i];
-            const highFreq = input - this.highBoostFilter.prevInput;
-            this.highBoostFilter.prevInput = input;
-            
-            const boosted = input + (highFreq * this.highBoostFilter.coefficient);
-            result[i] = boosted;
-        }
-        
-        return result;
-    }
-
-    resampleAudio(audioData, fromSampleRate, toSampleRate) {
-        if (fromSampleRate === toSampleRate) {
-            return audioData;
-        }
-
-        console.log(`Resampling from ${fromSampleRate}Hz to ${toSampleRate}Hz`);
-
-        const shouldFilter = fromSampleRate > toSampleRate;
-        const filteredData = shouldFilter ? this.applyAntiAliasingFilter(audioData) : audioData;
-        
-        const ratio = fromSampleRate / toSampleRate;
-        const newLength = Math.round(audioData.length / ratio);
-        const result = new Float32Array(newLength);
-
-        // Improved interpolation using 4-point cubic
-        for (let i = 0; i < newLength; i++) {
-            const position = i * ratio;
-            const index = Math.floor(position);
-            const fraction = position - index;
-
-            // Get four points for cubic interpolation
-            const p0 = filteredData[Math.max(0, index - 1)] || 0;
-            const p1 = filteredData[index] || 0;
-            const p2 = filteredData[Math.min(filteredData.length - 1, index + 1)] || p1;
-            const p3 = filteredData[Math.min(filteredData.length - 1, index + 2)] || p2;
-
-            // Cubic interpolation
-            const a0 = p3 - p2 - p0 + p1;
-            const a1 = p0 - p1 - a0;
-            const a2 = p2 - p0;
-            const a3 = p1;
-
-            const t = fraction;
-            result[i] = a0 * t * t * t + a1 * t * t + a2 * t + a3;
-        }
-
-        return result;
-    }
-
-    processInputBuffer() {
-        if (this.inputBuffer.length > 0) {
-            let dataToSend = this.inputBuffer;
-            
-            const buffer = new ArrayBuffer(dataToSend.length * 2);
-            const view = new DataView(buffer);
-            
-            dataToSend.forEach((value, index) => {
-                const clampedValue = Math.max(-1, Math.min(1, value));
-                view.setInt16(index * 2, clampedValue * 0x7fff, true);
-            });
-            
-            this.port.postMessage({
-                type: 'audio_data',
-                buffer: buffer,
-                sampleRate: this.targetSampleRate
-            }, [buffer]);
-            
-            this.inputBuffer = new Float32Array();
-            this.inputSampleCount = 0;
-        }
-    }
-
-    handleOutputData(newData) {
-        let processedData = newData;
-        
-        if (this.currentSampleRate !== this.targetSampleRate) {
-            processedData = this.resampleAudio(processedData, this.targetSampleRate, this.currentSampleRate);
-        }
-
-        // Apply high-frequency boost
-        processedData = this.applyHighFrequencyBoost(processedData);
-
-        // Normalize and increase gain while preventing clipping
-        const maxAmp = Math.max(...processedData.map(Math.abs));
-        if (maxAmp > 0) {
-            const targetGain = 0.9; // Increased from previous 0.95
-            const scalar = Math.min(targetGain / maxAmp, 2.0); // Allow up to 2x boost
-            processedData = processedData.map(s => s * scalar);
-        }
-
-        // Monitor levels
-        const rms = Math.sqrt(processedData.reduce((sum, x) => sum + x * x, 0) / processedData.length);
-        console.log(`Output audio levels - Peak: ${maxAmp.toFixed(2)}, RMS: ${rms.toFixed(2)}`);
-
-        const newBuffer = new Float32Array(this.outputBuffer.length + processedData.length);
-        newBuffer.set(this.outputBuffer);
-        newBuffer.set(processedData, this.outputBuffer.length);
-        
-        if (newBuffer.length > this.MAX_BUFFER_SIZE) {
-            this.outputBuffer = newBuffer.slice(-this.MAX_BUFFER_SIZE);
-        } else {
-            this.outputBuffer = newBuffer;
-        }
-    }
-
-    applyCrossFade(buffer, fadeLength) {
-        const fadedBuffer = new Float32Array(buffer.length);
-        fadedBuffer.set(buffer);
-        
-        // Apply fade in
-        for (let i = 0; i < fadeLength; i++) {
-            const factor = 0.5 * (1 - Math.cos((Math.PI * i) / fadeLength));
-            fadedBuffer[i] *= factor;
-        }
-        
-        // Apply fade out
-        for (let i = 0; i < fadeLength; i++) {
-            const factor = 0.5 * (1 + Math.cos((Math.PI * i) / fadeLength));
-            fadedBuffer[buffer.length - fadeLength + i] *= factor;
-        }
-        
-        return fadedBuffer;
     }
 
     process(inputs, outputs, parameters) {
-        // Update current sample rate
-        if (sampleRate !== this.currentSampleRate) {
-            console.log(`System sample rate changed to ${sampleRate}Hz`);
-            this.currentSampleRate = sampleRate;
-        }
+        const output = outputs[0];
+        const channelData = output[0];
 
-        if (this.mode === 'input') {
-            const input = inputs[0];
-            if (input && input[0]) {
-                const inputData = input[0];
-                
-                if (this.inputSampleCount < this.MAX_BUFFER_SIZE) {
-                    const newInputBuffer = new Float32Array(this.inputBuffer.length + inputData.length);
-                    newInputBuffer.set(this.inputBuffer);
-                    newInputBuffer.set(inputData, this.inputBuffer.length);
-                    this.inputBuffer = newInputBuffer;
-                    this.inputSampleCount += inputData.length;
-                }
-            }
-        } else if (this.mode === 'output') {
-            const output = outputs[0];
-            if (output && output[0]) {
-                const outputChannel = output[0];
-                
-                if (this.outputBuffer.length >= outputChannel.length) {
-                    const fadeLength = Math.min(128, outputChannel.length / 8);
-                    const processedBuffer = this.applyCrossFade(
-                        this.outputBuffer.slice(0, outputChannel.length),
-                        fadeLength
-                    );
-                    
-                    console.log(`Output buffer state - Length: ${this.outputBuffer.length}, Processing: ${outputChannel.length}`);
-                    
-                    outputChannel.set(processedBuffer);
-                    this.outputBuffer = this.outputBuffer.slice(outputChannel.length);
-                } else {
-                    outputChannel.fill(0);
-                    if (this.outputBuffer.length > 0) {
-                        const fadeLength = Math.min(128, this.outputBuffer.length / 8);
-                        const processedBuffer = this.applyCrossFade(
-                            this.outputBuffer,
-                            fadeLength
-                        );
-                        outputChannel.set(processedBuffer);
-                        this.outputBuffer = new Float32Array();
-                    }
-                }
-            }
+        if (this.buffer.length >= channelData.length) {
+            // Output available audio data
+            channelData.set(this.buffer.slice(0, channelData.length));
+            this.buffer = this.buffer.slice(channelData.length);
         }
 
         return true;
