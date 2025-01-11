@@ -2,14 +2,18 @@ class PCMProcessor extends AudioWorkletProcessor {
     constructor(options) {
         super();
         this.mode = options.processorOptions?.mode || 'output';
-        this.targetSampleRate = 16000;
+        this.targetSampleRate = 48000; // Changed to standard high-quality audio rate
         this.outputBuffer = new Float32Array();
         this.inputBuffer = new Float32Array();
         this.inputSampleCount = 0;
-        this.BUFFER_SIZE = 2048; // Reduced for lower latency
-        this.MAX_BUFFER_SIZE = 16000; // 1 second of audio at 16kHz
+        this.BUFFER_SIZE = 1024; // Optimized for lower latency
+        this.MAX_BUFFER_SIZE = 48000; // 1 second of audio at 48kHz
         this.lastSampleRate = null;
-
+        this.smoothingFactor = 0.15; // For smooth transitions
+        
+        // Anti-aliasing filter coefficients
+        this.filterCoeff = new Float32Array([0.23, 0.54, 0.23]); // Simple low-pass filter
+        
         this.port.onmessage = (e) => {
             if (this.mode === 'input' && e.data.type === 'get_buffer') {
                 this.processInputBuffer();
@@ -28,20 +32,76 @@ class PCMProcessor extends AudioWorkletProcessor {
         }
     }
 
+    applyAntiAliasingFilter(data) {
+        const filtered = new Float32Array(data.length);
+        for (let i = 1; i < data.length - 1; i++) {
+            filtered[i] = this.filterCoeff[0] * data[i-1] + 
+                         this.filterCoeff[1] * data[i] + 
+                         this.filterCoeff[2] * data[i+1];
+        }
+        // Handle edges
+        filtered[0] = data[0];
+        filtered[data.length - 1] = data[data.length - 1];
+        return filtered;
+    }
+
+    resampleAudio(audioData, fromSampleRate, toSampleRate) {
+        if (fromSampleRate === toSampleRate) {
+            return audioData;
+        }
+
+        // Apply anti-aliasing filter before resampling
+        const filteredData = this.applyAntiAliasingFilter(audioData);
+        
+        const ratio = fromSampleRate / toSampleRate;
+        const newLength = Math.round(audioData.length / ratio);
+        const result = new Float32Array(newLength);
+
+        // Cubic interpolation for better quality
+        for (let i = 0; i < newLength; i++) {
+            const position = i * ratio;
+            const index = Math.floor(position);
+            const fraction = position - index;
+
+            if (index > 0 && index < filteredData.length - 2) {
+                // Cubic interpolation coefficients
+                const a0 = filteredData[index - 1];
+                const a1 = filteredData[index];
+                const a2 = filteredData[index + 1];
+                const a3 = filteredData[index + 2];
+
+                // Cubic interpolation
+                const mu2 = fraction * fraction;
+                const mu3 = mu2 * fraction;
+
+                result[i] = (a3 - a2 - a0 + a1) * mu3 +
+                           (2.0 * a0 - 5.0 * a1 + 4.0 * a2 - a3) * mu2 +
+                           (a2 - a0) * fraction +
+                           2.0 * a1;
+                result[i] *= 0.5; // Scale to prevent clipping
+            } else {
+                // Fall back to linear interpolation at edges
+                result[i] = filteredData[index];
+            }
+        }
+
+        return result;
+    }
+
     processInputBuffer() {
         if (this.inputBuffer.length > 0) {
-            // Resample if necessary
             let dataToSend = this.inputBuffer;
             if (sampleRate !== this.targetSampleRate) {
                 dataToSend = this.resampleAudio(this.inputBuffer, sampleRate, this.targetSampleRate);
             }
 
+            // Apply dynamic range compression
+            dataToSend = this.applyCompression(dataToSend);
+
             const buffer = new ArrayBuffer(dataToSend.length * 2);
             const view = new DataView(buffer);
             
-            // Convert to 16-bit PCM with proper scaling
             dataToSend.forEach((value, index) => {
-                // Clamp values to prevent distortion
                 const clampedValue = Math.max(-1, Math.min(1, value));
                 view.setInt16(index * 2, clampedValue * 0x7fff, true);
             });
@@ -57,18 +117,32 @@ class PCMProcessor extends AudioWorkletProcessor {
         }
     }
 
+    applyCompression(data) {
+        const threshold = 0.5;
+        const ratio = 4;
+        return data.map(sample => {
+            if (Math.abs(sample) > threshold) {
+                const excess = Math.abs(sample) - threshold;
+                const compressed = threshold + excess / ratio;
+                return Math.sign(sample) * compressed;
+            }
+            return sample;
+        });
+    }
+
     handleOutputData(newData) {
-        // Resample output data if necessary
         let processedData = newData;
         if (sampleRate !== this.targetSampleRate) {
             processedData = this.resampleAudio(newData, this.targetSampleRate, sampleRate);
         }
 
+        // Apply compression for consistent volume
+        processedData = this.applyCompression(processedData);
+
         const newBuffer = new Float32Array(this.outputBuffer.length + processedData.length);
         newBuffer.set(this.outputBuffer);
         newBuffer.set(processedData, this.outputBuffer.length);
         
-        // Implement circular buffer to prevent excessive growth
         if (newBuffer.length > this.MAX_BUFFER_SIZE) {
             this.outputBuffer = newBuffer.slice(-this.MAX_BUFFER_SIZE);
         } else {
@@ -76,29 +150,23 @@ class PCMProcessor extends AudioWorkletProcessor {
         }
     }
 
-    resampleAudio(audioData, fromSampleRate, toSampleRate) {
-        if (fromSampleRate === toSampleRate) {
-            return audioData;
+    applyCrossFade(buffer, fadeLength) {
+        const fadedBuffer = new Float32Array(buffer.length);
+        fadedBuffer.set(buffer);
+        
+        // Apply fade in
+        for (let i = 0; i < fadeLength; i++) {
+            const factor = 0.5 * (1 - Math.cos((Math.PI * i) / fadeLength));
+            fadedBuffer[i] *= factor;
         }
-
-        const ratio = fromSampleRate / toSampleRate;
-        const newLength = Math.round(audioData.length / ratio);
-        const result = new Float32Array(newLength);
-
-        for (let i = 0; i < newLength; i++) {
-            const position = i * ratio;
-            const index = Math.floor(position);
-            const fraction = position - index;
-
-            if (index + 1 < audioData.length) {
-                // Linear interpolation
-                result[i] = audioData[index] * (1 - fraction) + audioData[index + 1] * fraction;
-            } else {
-                result[i] = audioData[index];
-            }
+        
+        // Apply fade out
+        for (let i = 0; i < fadeLength; i++) {
+            const factor = 0.5 * (1 + Math.cos((Math.PI * i) / fadeLength));
+            fadedBuffer[buffer.length - fadeLength + i] *= factor;
         }
-
-        return result;
+        
+        return fadedBuffer;
     }
 
     process(inputs, outputs, parameters) {
@@ -107,7 +175,6 @@ class PCMProcessor extends AudioWorkletProcessor {
             if (input && input[0]) {
                 const inputData = input[0];
                 
-                // Only accumulate if we haven't exceeded max buffer size
                 if (this.inputSampleCount < this.MAX_BUFFER_SIZE) {
                     const newInputBuffer = new Float32Array(this.inputBuffer.length + inputData.length);
                     newInputBuffer.set(this.inputBuffer);
@@ -122,35 +189,25 @@ class PCMProcessor extends AudioWorkletProcessor {
                 const outputChannel = output[0];
                 
                 if (this.outputBuffer.length >= outputChannel.length) {
-                    // Apply smoothing to prevent clicks and pops
-                    const fadeLength = Math.min(128, outputChannel.length);
-                    for (let i = 0; i < outputChannel.length; i++) {
-                        const value = this.outputBuffer[i];
-                        if (i < fadeLength) {
-                            // Fade in
-                            outputChannel[i] = value * (i / fadeLength);
-                        } else if (i >= outputChannel.length - fadeLength) {
-                            // Fade out
-                            outputChannel[i] = value * ((outputChannel.length - i) / fadeLength);
-                        } else {
-                            outputChannel[i] = value;
-                        }
-                    }
+                    const fadeLength = Math.min(256, outputChannel.length);
+                    const processedBuffer = this.applyCrossFade(
+                        this.outputBuffer.slice(0, outputChannel.length),
+                        fadeLength
+                    );
+                    
+                    outputChannel.set(processedBuffer);
                     this.outputBuffer = this.outputBuffer.slice(outputChannel.length);
                 } else {
-                    // If we don't have enough data, output silence with fade out
-                    const fadeLength = Math.min(128, this.outputBuffer.length);
                     outputChannel.fill(0);
-                    for (let i = 0; i < this.outputBuffer.length; i++) {
-                        if (i < this.outputBuffer.length - fadeLength) {
-                            outputChannel[i] = this.outputBuffer[i];
-                        } else {
-                            // Fade out remaining samples
-                            const fadeOut = (this.outputBuffer.length - i) / fadeLength;
-                            outputChannel[i] = this.outputBuffer[i] * fadeOut;
-                        }
+                    if (this.outputBuffer.length > 0) {
+                        const fadeLength = Math.min(256, this.outputBuffer.length);
+                        const processedBuffer = this.applyCrossFade(
+                            this.outputBuffer,
+                            fadeLength
+                        );
+                        outputChannel.set(processedBuffer);
+                        this.outputBuffer = new Float32Array();
                     }
-                    this.outputBuffer = new Float32Array();
                 }
             }
         }
