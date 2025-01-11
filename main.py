@@ -15,8 +15,9 @@ API_KEY = os.environ.get('GOOGLE_API_KEY')
 if not API_KEY:
     raise ValueError("GOOGLE_API_KEY environment variable is required")
 
-MODEL = "models/gemini-2.0-flash-exp"  # use your model ID
+MODEL = "gemini-2.0-flash-exp"  # use your model ID
 
+genai.configure(api_key=API_KEY)
 client = genai.Client(
     http_options={
         'api_version': 'v1alpha'
@@ -100,19 +101,26 @@ async def gemini_session_handler(websocket):
                                 model_turn = response.server_content.model_turn
                                 if model_turn:
                                     for part in model_turn.parts:
-                                        if hasattr(part, 'text') and part.text is not None:
-                                            logger.debug("Received text response from Gemini")
-                                            await websocket.send_str(json.dumps({"text": part.text}))
-                                        elif hasattr(part, 'inline_data') and part.inline_data is not None:
+                                        if hasattr(part, 'inline_data') and part.inline_data is not None:
                                             logger.debug(f"Received audio response from Gemini: {part.inline_data.mime_type}")
                                             base64_audio = base64.b64encode(part.inline_data.data).decode('utf-8')
                                             await websocket.send_str(json.dumps({
                                                 "audio": base64_audio
                                             }))
                                             logger.debug("Audio response sent to client")
+                                        elif hasattr(part, 'text') and part.text is not None:
+                                            # Accumulate text for later
+                                            if not hasattr(session, 'text_response'):
+                                                session.text_response = ''
+                                            session.text_response += part.text
 
                                 if response.server_content.turn_complete:
                                     logger.debug('Turn complete')
+                                    # Send accumulated text at turn completion
+                                    if hasattr(session, 'text_response') and session.text_response:
+                                        logger.debug("Sending accumulated text response")
+                                        await websocket.send_str(json.dumps({"text": session.text_response}))
+                                        session.text_response = ''
 
                         except Exception as e:
                             logger.error(f"Error receiving from Gemini: {e}")
