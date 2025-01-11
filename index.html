@@ -215,11 +215,8 @@
                 <canvas id="canvasElement"></canvas>
             </div>
             <div class="controls">
-                <button id="startButton" class="control-button">
+                <button id="micButton" class="control-button">
                     <i class="material-icons">mic</i>
-                </button>
-                <button id="stopButton" class="control-button">
-                    <i class="material-icons">mic_off</i>
                 </button>
                 <button id="screenShareButton" class="control-button">
                     <i class="material-icons">screen_share</i>
@@ -358,8 +355,8 @@
             setInterval(captureImage, 3000);
         });
 
-        const startButton = document.getElementById('startButton');
-        const stopButton = document.getElementById('stopButton');
+        const micButton = document.getElementById('micButton');
+        let isMicActive = false;
         let stream = null;
         let currentFrameB64;
         let mediaRecorder = null;
@@ -683,15 +680,22 @@
         }
 
         // Add click handlers with user gesture handling
-        startButton.addEventListener('click', async () => {
+        micButton.addEventListener('click', async () => {
             try {
-                await startAudioInput();
+                if (isMicActive) {
+                    stopAudioInput();
+                    micButton.querySelector('i').textContent = 'mic';
+                    micButton.classList.remove('active');
+                } else {
+                    await startAudioInput();
+                    micButton.querySelector('i').textContent = 'mic_off';
+                    micButton.classList.add('active');
+                }
+                isMicActive = !isMicActive;
             } catch (error) {
-                console.error("Error starting audio:", error);
+                console.error("Error toggling audio:", error);
             }
         });
-
-        stopButton.addEventListener('click', stopAudioInput);
 
         class Response {
             constructor(data) {
