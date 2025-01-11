@@ -95,7 +95,7 @@
             return audioContext;
         }
 
-        const URL = `wss://${window.location.hostname}/ws`;
+        const URL = `ws://${window.location.hostname}:8080/ws`;
         const video = document.getElementById("videoElement");
         const canvas = document.getElementById("canvasElement");
         let context;
@@ -117,25 +117,15 @@
         let audioWorkletNode = null;
         let inputWorkletNode = null;
         let interval = null;
+        let initialized = false;
 
-        function base64ToArrayBuffer(base64) {
-            const binaryString = window.atob(base64);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
+        function arrayBufferToBase64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
             }
-            return bytes.buffer;
-        }
-
-        function convertPCM16LEToFloat32(pcmData) {
-            const inputArray = new Int16Array(pcmData);
-            const float32Array = new Float32Array(inputArray.length);
-
-            for (let i = 0; i < inputArray.length; i++) {
-                float32Array[i] = inputArray[i] / 32768;
-            }
-
-            return float32Array;
+            return btoa(binary);
         }
 
         // Function to start screen capture
@@ -300,30 +290,12 @@
                     }
                 };
                 
-                workletInitialized = true;
+                initialized = true;
                 console.log("Audio worklet initialized successfully");
             } catch (error) {
                 console.error("Failed to initialize audio worklet:", error);
                 workletInitialized = false;
             }
-        }
-
-        function arrayBufferToBase64(buffer) {
-            const bytes = new Uint8Array(buffer);
-            let binary = '';
-            for (let i = 0; i < bytes.length; i++) {
-                binary += String.fromCharCode(bytes[i]);
-            }
-            return btoa(binary);
-        }
-
-        async function base64ToArrayBuffer(base64) {
-            const binaryString = window.atob(base64);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            return bytes.buffer;
         }
 
         function convertPCM16LEToFloat32(pcmData) {
@@ -364,7 +336,7 @@
                 audioStream = await navigator.mediaDevices.getUserMedia({
                     audio: {
                         channelCount: 1,
-                        sampleRate: { exact: 16000 },  // Force exact sample rate
+                        sampleRate: { exact: 16000 },
                         echoCancellation: true,
                         noiseSuppression: true,
                     },
@@ -417,12 +389,12 @@
         }
 
         function stopAudioInput() {
+            if (inputWorkletNode) {
+                inputWorkletNode.disconnect();
+            }
             if (audioStream) {
                 audioStream.getTracks().forEach(track => track.stop());
                 audioStream = null;
-            }
-            if (inputWorkletNode) {
-                inputWorkletNode.disconnect();
             }
             clearInterval(interval);
             interval = null;
