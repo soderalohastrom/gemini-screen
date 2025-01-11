@@ -1,81 +1,258 @@
 <!DOCTYPE html>
-<html>
+<html data-theme="light">
 
 <head>
+    <title>Screen Buddy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
     <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
-
     <style>
-        #videoElement {
-            width: 800px;
-            height: 600px;
+        /* Theme Variables */
+        :root[data-theme="light"] {
+            --bg-primary: #f0f2f5;
+            --bg-secondary: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #34495e;
+            --accent-primary: #3498db;
+            --accent-secondary: #2980b9;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --inset-shadow: inset 2px 2px 5px var(--shadow-color);
+            --outset-shadow: 
+                -5px -5px 10px rgba(255, 255, 255, 0.8),
+                5px 5px 10px var(--shadow-color);
+            --button-hover: rgba(52, 152, 219, 0.1);
+        }
+
+        :root[data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #ecf0f1;
+            --text-secondary: #bdc3c7;
+            --accent-primary: #3498db;
+            --accent-secondary: #2980b9;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --inset-shadow: inset 2px 2px 5px var(--shadow-color);
+            --outset-shadow: 
+                -5px -5px 10px rgba(255, 255, 255, 0.05),
+                5px 5px 10px var(--shadow-color);
+            --button-hover: rgba(52, 152, 219, 0.2);
+        }
+
+        /* Reset & Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header Styles */
+        .header {
+            padding: 1rem;
+            background: var(--bg-secondary);
+            box-shadow: var(--outset-shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-shadow: 1px 1px 2px var(--shadow-color);
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            padding: 0.5rem;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            box-shadow: var(--outset-shadow);
+        }
+
+        .theme-toggle:active {
+            box-shadow: var(--inset-shadow);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Video Container */
+        .video-portal {
+            position: relative;
+            width: 100%;
+            background: var(--bg-secondary);
             border-radius: 20px;
+            padding: 1rem;
+            box-shadow: var(--outset-shadow);
+            margin-bottom: 2rem;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: var(--inset-shadow);
+        }
+
+        #videoElement {
+            width: 100%;
+            height: auto;
+            display: block;
+            aspect-ratio: 16/9;
+            background: var(--bg-primary);
         }
 
         #canvasElement {
             display: none;
-            width: 800px;
-            height: 600px;
+            width: 100%;
+            height: auto;
+            aspect-ratio: 16/9;
         }
 
-        .demo-content {
-            padding: 20px;
+        /* Controls */
+        .controls {
             display: flex;
-            flex-direction: column;
-            align-items: center;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
         }
 
-        .button-group {
-            margin-bottom: 20px;
+        .control-button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            box-shadow: var(--outset-shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .control-button:hover {
+            background: var(--button-hover);
+        }
+
+        .control-button:active {
+            box-shadow: var(--inset-shadow);
+        }
+
+        .control-button.active {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        /* Chat Log */
+        #chatLog {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            box-shadow: var(--inset-shadow);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        #chatLog p {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border-radius: 8px;
+            background: var(--bg-primary);
+            box-shadow: var(--outset-shadow);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
+
+            .controls {
+                flex-wrap: wrap;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 4px;
         }
     </style>
 </head>
 
 <body>
-    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
-        <header class="mdl-layout__header">
-            <div class="mdl-layout__header-row">
-                <!-- Title -->
-                <span class="mdl-layout-title">Gemini Live Demo</span>
+    <header class="header">
+        <h1 class="app-title">Screen Buddy</h1>
+        <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">
+            <span class="material-icons">dark_mode</span>
+        </button>
+    </header>
+
+    <main class="main-content">
+        <div class="video-portal">
+            <div class="video-container">
+                <video id="videoElement" autoplay></video>
+                <canvas id="canvasElement"></canvas>
             </div>
-        </header>
-        <main class="mdl-layout__content">
-            <div class="page-content">
-                <div class="demo-content">
-                    <!-- Voice Control Buttons -->
-                    <div class="button-group">
-                        <button id="startButton"
-                            class="mdl-button mdl-js-button mdl-button--fab mdl-button--mini-fab mdl-button--colored">
-                            <i class="material-icons">mic</i>
-                        </button>
-                        <button id="stopButton"
-                            class="mdl-button mdl-js-button mdl-button--fab mdl-button--mini-fab">
-                            <i class="material-icons">mic_off</i>
-                        </button>
-                    </div>
-
-                    <!-- Screen Share Button -->
-                    <div class="button-group">
-                        <button id="screenShareButton" 
-                                class="mdl-button mdl-js-button mdl-button--fab mdl-button--mini-fab">
-                            <i class="material-icons">screen_share</i>
-                        </button>
-                    </div>
-
-                    <!-- Video Element -->
-                    <video id="videoElement" autoplay style="width: 800px; height: 600px;"></video>
-
-                    <!-- Hidden Canvas -->
-                    <canvas id="canvasElement" style="width: 800px; height: 600px;"></canvas>
-                    <!-- Text Output -->
-                    <div id="chatLog"></div>
-                </div>
+            <div class="controls">
+                <button id="startButton" class="control-button">
+                    <i class="material-icons">mic</i>
+                </button>
+                <button id="stopButton" class="control-button">
+                    <i class="material-icons">mic_off</i>
+                </button>
+                <button id="screenShareButton" class="control-button">
+                    <i class="material-icons">screen_share</i>
+                </button>
             </div>
-        </main>
-    </div>
+        </div>
+        <div id="chatLog"></div>
+    </main>
 
-    <script defer>
+    <script>
+        // Theme toggle functionality
+        function toggleTheme() {
+            const html = document.documentElement;
+            const themeToggle = document.getElementById('themeToggle');
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            const icon = themeToggle.querySelector('.material-icons');
+            
+            html.setAttribute('data-theme', newTheme);
+            icon.textContent = newTheme === 'light' ? 'dark_mode' : 'light_mode';
+        }
+
         // Audio context and stream management
         let audioContext = null;
         let audioStream = null;
@@ -92,7 +269,6 @@
         async function initAudioContext(preferredSampleRate = 16000) {
             try {
                 if (!audioContext) {
-                    // Try to match device capabilities
                     const devices = await navigator.mediaDevices.enumerateDevices();
                     const audioDevice = devices.find(device => device.kind === 'audioinput');
                     
@@ -104,13 +280,11 @@
                             }
                         };
                         
-                        // Test device capabilities
                         const testStream = await navigator.mediaDevices.getUserMedia(constraints);
                         const track = testStream.getAudioTracks()[0];
                         const capabilities = track.getCapabilities();
                         testStream.getTracks().forEach(track => track.stop());
                         
-                        // Use supported sample rate
                         const sampleRate = capabilities.sampleRate?.max >= preferredSampleRate ?
                             preferredSampleRate : capabilities.sampleRate?.max || 44100;
                         
@@ -151,7 +325,6 @@
                 
                 console.log('Audio Quality Metrics:', metrics);
                 
-                // Reset counters
                 audioQualityMonitor.lastCheckTime = now;
                 audioQualityMonitor.sampleCount = 0;
                 audioQualityMonitor.clippingCount = 0;
@@ -159,7 +332,6 @@
                 audioQualityMonitor.overrunCount = 0;
             }
             
-            // Update metrics
             audioQualityMonitor.sampleCount += audioData.length;
             audioData.forEach(sample => {
                 if (Math.abs(sample) > 0.95) {
@@ -174,16 +346,6 @@
         let context;
         let webSocket = null;
         let isWebSocketReady = false;
-
-        // Initialize context here
-        window.addEventListener("load", async () => {
-            context = canvas.getContext("2d");
-            await connect();
-            setInterval(captureImage, 3000);
-        });
-
-        const startButton = document.getElementById('startButton');
-        const stopButton = document.getElementById('stopButton');
         let stream = null;
         let currentFrameB64;
         let mediaRecorder = null;
@@ -191,6 +353,13 @@
         let inputWorkletNode = null;
         let interval = null;
         let initialized = false;
+
+        // Initialize context
+        window.addEventListener("load", async () => {
+            context = canvas.getContext("2d");
+            await connect();
+            setInterval(captureImage, 3000);
+        });
 
         function arrayBufferToBase64(buffer) {
             const bytes = new Uint8Array(buffer);
@@ -202,308 +371,225 @@
         }
 
         function base64ToArrayBuffer(base64) {
-            const binary_string = atob(base64);
-            const len = binary_string.length;
-            const bytes = new Uint8Array(len);
-            for (let i = 0; i < len; i++) {
-                bytes[i] = binary_string.charCodeAt(i);
+            const binaryString = atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
             }
             return bytes.buffer;
         }
 
-        // Function to start screen capture
         async function startScreenShare() {
             try {
-                if (!stream) {
-                    stream = await navigator.mediaDevices.getDisplayMedia({
-                        video: {
-                            width: { max: 800 },
-                            height: { max: 600 },
-                        },
-                    });
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                    video: {
+                        cursor: "always"
+                    },
+                    audio: false
+                });
+                video.srcObject = stream;
 
-                    video.srcObject = stream;
-                    await new Promise(resolve => {
-                        video.onloadedmetadata = () => {
-                            console.log("video loaded metadata");
-                            resolve();
-                        }
-                    });
+                stream.getVideoTracks()[0].addEventListener('ended', () => {
+                    console.log('Screen sharing ended');
+                    video.srcObject = null;
+                    stream = null;
+                });
 
-                    // Handle stream end
-                    stream.getVideoTracks()[0].onended = () => {
-                        stream = null;
-                        video.srcObject = null;
-                    };
-                }
             } catch (err) {
-                console.error("Error accessing the screen: ", err);
+                console.error("Error: " + err);
             }
         }
 
-        // Function to capture an image from the shared screen
         function captureImage() {
-            if (stream && video.videoWidth > 0 && video.videoHeight > 0 && context) {
-                canvas.width = 640;
-                canvas.height = 480;
+            if (stream && stream.active) {
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
-                const imageData = canvas.toDataURL("image/jpeg").split(",")[1].trim();
-                currentFrameB64 = imageData;
-            }
-            else {
-                console.log("no stream or video metadata not loaded");
+                currentFrameB64 = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
             }
         }
 
-        // Add screen share button handler
-        document.getElementById('screenShareButton').addEventListener('click', async () => {
-            await startScreenShare();
-        });
-
-        function connect() {
-            return new Promise((resolve, reject) => {
-                console.log("connecting: ", URL);
-
-                if (webSocket && webSocket.readyState !== WebSocket.CLOSED) {
-                    webSocket.close();
-                }
-
+        async function connect() {
+            if (webSocket === null || webSocket.readyState === WebSocket.CLOSED) {
                 webSocket = new WebSocket(URL);
-
-                webSocket.onclose = (event) => {
-                    console.log("websocket closed: ", event);
-                    isWebSocketReady = false;
-                    setTimeout(() => connect(), 1000); // Attempt to reconnect after 1 second
-                };
-
-                webSocket.onerror = (event) => {
-                    console.log("websocket error: ", event);
-                    isWebSocketReady = false;
-                };
-
-                webSocket.onopen = async (event) => {
-                    console.log("websocket open: ", event);
+                
+                webSocket.onopen = () => {
+                    console.log("Connected to server");
                     isWebSocketReady = true;
-                    // Send setup message immediately after setting ready state
                     sendInitialSetupMessage();
-                    resolve();
                 };
 
                 webSocket.onmessage = receiveMessage;
-            });
+                
+                webSocket.onclose = () => {
+                    console.log("Disconnected from server");
+                    isWebSocketReady = false;
+                    setTimeout(connect, 1000);
+                };
+
+                webSocket.onerror = (error) => {
+                    console.error("WebSocket error:", error);
+                    webSocket.close();
+                };
+            }
         }
 
         function sendInitialSetupMessage() {
-            if (!isWebSocketReady) {
-                console.log("WebSocket not ready for setup message");
-                return;
+            if (isWebSocketReady) {
+                const setupMessage = {
+                    type: "setup",
+                    format: "audio/pcm",
+                    sampleRate: audioContext ? audioContext.sampleRate : 16000,
+                    sampleWidth: 2,
+                    channels: 1,
+                    language: "en-US"
+                };
+                webSocket.send(JSON.stringify(setupMessage));
             }
-
-            console.log("sending setup message");
-            const setup_client_message = {
-                setup: {
-                    generation_config: { response_modalities: ["AUDIO"] },
-                },
-            };
-
-            webSocket.send(JSON.stringify(setup_client_message));
         }
 
         function sendVoiceMessage(b64PCM) {
-            if (!isWebSocketReady) {
-                console.log("websocket not ready");
-                return;
+            if (isWebSocketReady && currentFrameB64) {
+                const message = {
+                    type: "voice",
+                    pcm: b64PCM,
+                    image: currentFrameB64
+                };
+                try {
+                    webSocket.send(JSON.stringify(message));
+                } catch (error) {
+                    console.error("Error sending voice message:", error);
+                    webSocket.close();
+                }
             }
-
-            const payload = {
-                realtime_input: {
-                    media_chunks: [{
-                        mime_type: "audio/pcm",
-                        data: b64PCM,
-                    },
-                    {
-                        mime_type: "image/jpeg",
-                        data: currentFrameB64,
-                    },
-                    ],
-                },
-            };
-
-            webSocket.send(JSON.stringify(payload));
-            console.log("sent voice message");
         }
 
         function receiveMessage(event) {
-            const messageData = JSON.parse(event.data);
-            const response = new Response(messageData);
-
-            if (response.text) {
-                displayMessage("GEMINI: " + response.text);
-            }
-            if (response.audioData) {
-                ingestAudioChunkToPlay(response.audioData);
+            try {
+                const message = JSON.parse(event.data);
+                if (message.type === "transcript") {
+                    displayMessage(message.text);
+                }
+            } catch (error) {
+                console.error("Error processing message:", error);
             }
         }
 
         async function initializeAudioWorklet() {
-            if (workletInitialized) return;
-
-            try {
-                await audioContext.audioWorklet.addModule("pcm-processor.js");
-                
-                // Create output worklet node
-                audioWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
-                    processorOptions: {
-                        mode: 'output'
-                    }
-                });
-                audioWorkletNode.connect(audioContext.destination);
-                
-                // Create input worklet node
-                inputWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
-                    processorOptions: {
-                        mode: 'input'
-                    }
-                });
-                inputWorkletNode.port.onmessage = (e) => {
-                    if (e.data.type === 'audio_data') {
-                        const base64 = arrayBufferToBase64(e.data.buffer);
-                        sendVoiceMessage(base64);
-                    }
-                };
-                
-                initialized = true;
-                console.log("Audio worklet initialized successfully");
-            } catch (error) {
-                console.error("Failed to initialize audio worklet:", error);
-                workletInitialized = false;
+            if (!workletInitialized && audioContext) {
+                try {
+                    await audioContext.audioWorklet.addModule('processor.js');
+                    workletInitialized = true;
+                    console.log("Audio worklet initialized");
+                } catch (error) {
+                    console.error("Error initializing audio worklet:", error);
+                    workletInitialized = false;
+                }
             }
         }
 
         function convertPCM16LEToFloat32(pcmData) {
-            const inputArray = new Int16Array(pcmData);
-            const float32Array = new Float32Array(inputArray.length);
-
-            for (let i = 0; i < inputArray.length; i++) {
-                float32Array[i] = inputArray[i] / 32768;
+            const samples = new Int16Array(pcmData);
+            const float32 = new Float32Array(samples.length);
+            for (let i = 0; i < samples.length; i++) {
+                float32[i] = samples[i] / 32768.0;
             }
-
-            return float32Array;
+            return float32;
         }
 
-        async function ingestAudioChunkToPlay(base64AudioChunk) {
-            try {
-                if (audioContext.state === "suspended") {
-                    await audioContext.resume();
-                }
-                const arrayBuffer = base64ToArrayBuffer(base64AudioChunk);
-                const float32Data = convertPCM16LEToFloat32(arrayBuffer);
-
-                audioWorkletNode.port.postMessage(float32Data);
-            } catch (error) {
-                console.error("Error processing audio chunk:", error);
-            }
+        function ingestAudioChunkToPlay(base64AudioChunk) {
+            if (!audioContext) return;
+            
+            const audioData = base64ToArrayBuffer(base64AudioChunk);
+            const float32Data = convertPCM16LEToFloat32(audioData);
+            
+            const audioBuffer = audioContext.createBuffer(1, float32Data.length, audioContext.sampleRate);
+            audioBuffer.getChannelData(0).set(float32Data);
+            
+            const source = audioContext.createBufferSource();
+            source.buffer = audioBuffer;
+            source.connect(audioContext.destination);
+            source.start();
         }
 
         async function startAudioInput() {
             try {
-                // Initialize audio context with device-compatible sample rate
-                await initAudioContext();
-
-                // Close any existing audio stream
-                if (audioStream) {
-                    audioStream.getTracks().forEach(track => track.stop());
+                if (!audioContext) {
+                    await initAudioContext();
                 }
 
-                // Get supported constraints
-                const deviceCapabilities = await navigator.mediaDevices.getSupportedConstraints();
-                const audioConstraints = {
-                    channelCount: 1,
-                    echoCancellation: true,
-                    noiseSuppression: true,
-                    autoGainControl: true
-                };
-
-                // Add sample rate if supported
-                if (deviceCapabilities.sampleRate) {
-                    audioConstraints.sampleRate = { ideal: audioContext.sampleRate };
+                if (!workletInitialized) {
+                    await initializeAudioWorklet();
                 }
 
-                // Get new audio stream
                 audioStream = await navigator.mediaDevices.getUserMedia({
-                    audio: audioConstraints
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
                 });
 
-                // Create and configure audio source
                 const source = audioContext.createMediaStreamSource(audioStream);
                 
-                // Add gain node for volume control
-                const gainNode = audioContext.createGain();
-                gainNode.gain.value = 1.0; // Adjustable gain
-                source.connect(gainNode);
-                gainNode.connect(inputWorkletNode);
-
-                // Inform worklet about actual sample rate
-                const streamSettings = audioStream.getAudioTracks()[0].getSettings();
-                inputWorkletNode.port.postMessage({
-                    type: 'set_sample_rate',
-                    sampleRate: streamSettings.sampleRate
-                });
-
-                // Set up buffer processing with dynamic interval
-                const bufferInterval = Math.floor(1000 * (2048 / audioContext.sampleRate));
-                interval = setInterval(() => {
-                    if (inputWorkletNode?.port) {
-                        inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                if (audioWorkletNode) {
+                    audioWorkletNode.disconnect();
+                }
+                
+                audioWorkletNode = new AudioWorkletNode(audioContext, 'recorder-worklet');
+                
+                audioWorkletNode.port.onmessage = (event) => {
+                    if (event.data.eventType === 'data') {
+                        const audioData = event.data.audioData;
+                        updateAudioQualityMetrics(audioData);
+                        const b64PCM = arrayBufferToBase64(event.data.buffer);
+                        sendVoiceMessage(b64PCM);
+                    } else if (event.data.eventType === 'error') {
+                        console.error('Audio processing error:', event.data.error);
+                        stopAudioInput();
                     }
-                }, bufferInterval);
+                };
 
-                // Add audio quality monitoring
-                const analyzerNode = audioContext.createAnalyser();
-                analyzerNode.fftSize = 2048;
-                source.connect(analyzerNode);
+                source.connect(audioWorkletNode);
+                audioWorkletNode.connect(audioContext.destination);
                 
-                const monitorInterval = setInterval(() => {
-                    const dataArray = new Float32Array(analyzerNode.frequencyBinCount);
-                    analyzerNode.getFloatTimeDomainData(dataArray);
-                    updateAudioQualityMetrics(dataArray);
-                }, 1000);
-
-                console.log(`Audio input started successfully:
-                    Sample Rate: ${streamSettings.sampleRate}Hz
-                    Buffer Interval: ${bufferInterval}ms
-                    Monitoring: Active`);
+                startButton.classList.add('active');
+                stopButton.classList.remove('active');
                 
+                console.log("Audio input started");
             } catch (error) {
                 console.error("Error starting audio input:", error);
-                displayMessage("Error: Could not start audio input. Please check your microphone settings.");
-                throw error;
+                displayMessage("Error starting audio input: " + error.message);
             }
         }
 
         function stopAudioInput() {
-            if (inputWorkletNode) {
-                inputWorkletNode.disconnect();
+            if (audioWorkletNode) {
+                audioWorkletNode.disconnect();
+                audioWorkletNode = null;
             }
+            
             if (audioStream) {
                 audioStream.getTracks().forEach(track => track.stop());
                 audioStream = null;
             }
-            clearInterval(interval);
-            interval = null;
+            
+            startButton.classList.remove('active');
+            stopButton.classList.add('active');
+            
             console.log("Audio input stopped");
         }
 
         function displayMessage(message) {
-            console.log(message);
-            addParagraphToDiv("chatLog", message);
+            addParagraphToDiv('chatLog', message);
         }
 
         function addParagraphToDiv(divId, text) {
-            const newParagraph = document.createElement("p");
-            newParagraph.textContent = text;
             const div = document.getElementById(divId);
-            div.appendChild(newParagraph);
+            const p = document.createElement('p');
+            p.textContent = text;
+            div.appendChild(p);
+            div.scrollTop = div.scrollHeight;
         }
 
         // Add click handlers with user gesture handling
@@ -511,29 +597,31 @@
             try {
                 await startAudioInput();
             } catch (error) {
-                console.error("Error starting audio:", error);
+                console.error("Error in click handler:", error);
+                displayMessage("Error: " + error.message);
             }
         });
 
         stopButton.addEventListener('click', stopAudioInput);
 
+        // Add screen share button handler
+        document.getElementById('screenShareButton').addEventListener('click', async () => {
+            await startScreenShare();
+        });
+
         class Response {
-            constructor(data) {
-                this.text = null;
-                this.audioData = null;
-                this.endOfTurn = null;
-
-                if (data.text) {
-                    this.text = data.text
-                }
-
-                if (data.audio) {
-                    this.audioData = data.audio;
-                }
+            constructor(text) {
+                this.text = text;
+            }
+            
+            async json() {
+                return JSON.parse(this.text);
+            }
+            
+            async text() {
+                return this.text;
             }
         }
     </script>
-
 </body>
-
 </html>
