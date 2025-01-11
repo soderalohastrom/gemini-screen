@@ -15,12 +15,12 @@ API_KEY = os.environ.get('GOOGLE_API_KEY')
 if not API_KEY:
     raise ValueError("GOOGLE_API_KEY environment variable is required")
 
-MODEL = "gemini-2.0-flash-exp"  # use your model ID
+MODEL = "models/gemini-2.0-flash-exp"  # use your model ID
 
 client = genai.Client(
-  http_options={
-    'api_version': 'v1alpha',
-  }
+    http_options={
+        'api_version': 'v1alpha'
+    }
 )
 
 async def gemini_session_handler(websocket):
@@ -33,12 +33,12 @@ async def gemini_session_handler(websocket):
         config_message = await websocket.receive_str()
         config_data = json.loads(config_message)
         config = config_data.get("setup", {})
-        config["system_instruction"] = """You are a helpful assistant for screen sharing sessions. Your role is to: 
-                                        1) Analyze and describe the content being shared on screen 
-                                        2) Answer questions about the shared content 
-                                        3) Provide relevant information and context about what's being shown 
-                                        4) Assist with technical issues related to screen sharing 
-                                        5) Maintain a professional and helpful tone. Focus on being concise and clear in your responses."""     
+        config["system_instruction"] = """You are a helpful assistant for screen sharing sessions. Your role is to:
+                                        1) Analyze and describe the content being shared on screen
+                                        2) Answer questions about the shared content
+                                        3) Provide relevant information and context about what's being shown
+                                        4) Assist with technical issues related to screen sharing
+                                        5) Maintain a professional and helpful tone. Focus on being concise and clear in your responses."""
 
         logger.info("Connecting to Gemini API...")
         async with client.aio.live.connect(model=MODEL, config=config) as session:
@@ -107,7 +107,7 @@ async def gemini_session_handler(websocket):
                                             logger.debug(f"Received audio response from Gemini: {part.inline_data.mime_type}")
                                             base64_audio = base64.b64encode(part.inline_data.data).decode('utf-8')
                                             await websocket.send_str(json.dumps({
-                                                "audio": base64_audio,
+                                                "audio": base64_audio
                                             }))
                                             logger.debug("Audio response sent to client")
 
@@ -126,7 +126,7 @@ async def gemini_session_handler(websocket):
             # Start both tasks
             send_task = asyncio.create_task(send_to_gemini())
             receive_task = asyncio.create_task(receive_from_gemini())
-            
+
             try:
                 await asyncio.gather(send_task, receive_task)
             except asyncio.CancelledError:
