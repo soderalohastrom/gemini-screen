@@ -194,10 +194,17 @@
 
         #chatLog p {
             margin: 0.5rem 0;
-            padding: 0.5rem;
+            padding: 0.8rem;
             border-radius: 8px;
-            background: var(--bg-primary);
+            background: var(--bg-secondary);
             box-shadow: var(--outset-shadow);
+            color: var(--text-primary);
+            font-size: 1.1rem;
+            line-height: 1.5;
+        }
+
+        #chatLog p.gemini {
+            border-left: 4px solid var(--accent-primary);
         }
 
         /* Theme Toggle */
@@ -739,8 +746,15 @@
         function addParagraphToDiv(divId, text) {
             const newParagraph = document.createElement("p");
             newParagraph.textContent = text;
+            if (text.startsWith("GEMINI:")) {
+                newParagraph.classList.add("gemini");
+                // Remove the "GEMINI:" prefix for cleaner display
+                newParagraph.textContent = text.substring(7).trim();
+            }
             const div = document.getElementById(divId);
             div.appendChild(newParagraph);
+            // Auto-scroll to bottom
+            div.scrollTop = div.scrollHeight;
         }
 
         // Add click handlers with user gesture handling
