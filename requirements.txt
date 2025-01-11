@@ -1,3 +1,2 @@
 aiohttp==3.9.1
 google-genai==0.3.0
-websockets>=13.0,<15.0
