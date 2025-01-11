@@ -71,7 +71,7 @@ async def gemini_session_handler(websocket):
                         elif msg.type == WSMsgType.ERROR:
                             logger.error(f"WebSocket error: {msg.data}")
                             break
-                        elif msg.type == WSMsgType.CLOSE or msg.type == WSMsgType.CLOSING or msg.type == WSMsgType.CLOSED:
+                        elif msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED, 8):
                             logger.info("WebSocket closing")
                             break
                         elif msg.type == WSMsgType.PING:
@@ -80,6 +80,7 @@ async def gemini_session_handler(websocket):
                             continue
                         else:
                             logger.debug(f"Unhandled message type: {msg.type}")
+                            continue
                 except Exception as e:
                     logger.error(f"Error in send_to_gemini: {e}")
                 finally:
