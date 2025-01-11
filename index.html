@@ -578,13 +578,21 @@
         }
 
         function receiveMessage(event) {
+            console.log("Raw message event:", event);
             const messageData = JSON.parse(event.data);
+            console.log("Parsed message data:", messageData);
+            
             const response = new Response(messageData);
+            console.log("Response object:", response);
 
             if (response.text) {
+                console.log("Received text response:", response.text);
+                const chatLog = document.getElementById('chatLog');
+                console.log("ChatLog element:", chatLog);
                 displayMessage("GEMINI: " + response.text);
             }
             if (response.audioData) {
+                console.log("Received audio data");
                 ingestAudioChunkToPlay(response.audioData);
             }
         }
@@ -739,20 +747,41 @@
         }
 
         function displayMessage(message) {
-            console.log(message);
+            console.log("Displaying message:", message);
+            const chatLog = document.getElementById("chatLog");
+            console.log("ChatLog element before display:", chatLog);
+            if (!chatLog) {
+                console.error("ChatLog element not found!");
+                return;
+            }
             addParagraphToDiv("chatLog", message);
+            console.log("Message added to chat log");
         }
 
         function addParagraphToDiv(divId, text) {
+            console.log("Adding paragraph to div:", divId, text);
+            const div = document.getElementById(divId);
+            if (!div) {
+                console.error("Target div not found:", divId);
+                return;
+            }
+
             const newParagraph = document.createElement("p");
-            newParagraph.textContent = text;
             if (text.startsWith("GEMINI:")) {
                 newParagraph.classList.add("gemini");
                 // Remove the "GEMINI:" prefix for cleaner display
                 newParagraph.textContent = text.substring(7).trim();
+            } else {
+                newParagraph.textContent = text;
             }
-            const div = document.getElementById(divId);
+
+            // Ensure text color matches theme
+            newParagraph.style.color = getComputedStyle(document.documentElement)
+                .getPropertyValue('--text-primary');
+            
             div.appendChild(newParagraph);
+            console.log("Paragraph added:", newParagraph);
+            
             // Auto-scroll to bottom
             div.scrollTop = div.scrollHeight;
         }
