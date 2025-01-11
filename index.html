@@ -580,13 +580,21 @@
         }
 
         function receiveMessage(event) {
+            console.log("Raw message event:", event);
             const messageData = JSON.parse(event.data);
+            console.log("Parsed message data:", messageData);
+            
             const response = new Response(messageData);
+            console.log("Response object:", response);
 
             if (response.text) {
+                console.log("Received text response:", response.text);
+                const chatLog = document.getElementById('chatLog');
+                console.log("ChatLog element:", chatLog);
                 displayMessage("GEMINI: " + response.text);
             }
             if (response.audioData) {
+                console.log("Received audio data");
                 ingestAudioChunkToPlay(response.audioData);
             }
         }
