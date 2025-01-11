@@ -587,15 +587,21 @@
             const response = new Response(messageData);
             console.log("Response object:", response);
 
+            // Handle text response if present
             if (response.text) {
-                console.log("Received text response:", response.text);
-                const chatLog = document.getElementById('chatLog');
-                console.log("ChatLog element:", chatLog);
+                console.log("Processing text response:", response.text);
                 displayMessage("GEMINI: " + response.text);
             }
+
+            // Handle audio response if present
             if (response.audioData) {
-                console.log("Received audio data");
-                ingestAudioChunkToPlay(response.audioData);
+                console.log("Processing audio data, length:", response.audioData.length);
+                try {
+                    ingestAudioChunkToPlay(response.audioData);
+                    console.log("Audio data sent to worklet for playback");
+                } catch (error) {
+                    console.error("Error playing audio:", error);
+                }
             }
         }
 
@@ -808,33 +814,21 @@
 
         class Response {
             constructor(data) {
-                console.log("Creating Response from raw data:", JSON.stringify(data, null, 2));
+                console.log("Creating Response from data:", data);
                 
                 this.text = null;
                 this.audioData = null;
                 this.endOfTurn = null;
 
-                // Handle text response
                 if (data.text) {
-                    console.log("Found text in response data:", data.text);
+                    console.log("Found text:", data.text);
                     this.text = data.text;
-                } else {
-                    console.log("No text found in response data");
                 }
 
-                // Handle audio response
                 if (data.audio) {
-                    console.log("Found audio data in response");
+                    console.log("Found audio data");
                     this.audioData = data.audio;
-                } else {
-                    console.log("No audio found in response data");
                 }
-
-                console.log("Final Response object state:", {
-                    hasText: !!this.text,
-                    textContent: this.text,
-                    hasAudio: !!this.audioData
-                });
             }
         }
     </script>
