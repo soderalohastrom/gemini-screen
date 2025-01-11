@@ -65,12 +65,17 @@ async def gemini_session_handler(websocket):
                                 logger.error(f"Error decoding JSON: {e}")
                             except Exception as e:
                                 logger.error(f"Error sending to Gemini: {e}")
+                        elif msg.type == WSMsgType.BINARY:
+                            logger.debug("Received binary message, ignoring")
+                            continue
                         elif msg.type == WSMsgType.ERROR:
                             logger.error(f"WebSocket error: {msg.data}")
                             break
-                        elif msg.type == WSMsgType.CLOSE:
-                            logger.info("WebSocket closed by client")
+                        elif msg.type == WSMsgType.CLOSING or msg.type == WSMsgType.CLOSED:
+                            logger.info("WebSocket closing")
                             break
+                        else:
+                            logger.warning(f"Unhandled message type: {msg.type}")
                 except Exception as e:
                     logger.error(f"Error in send_to_gemini: {e}")
                 finally:
