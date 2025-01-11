@@ -1,0 +1,9 @@
+.git
+.gitignore
+__pycache__
+*.pyc
+.env
+.venv
+venv/
+.DS_Store
+nginx.conf
