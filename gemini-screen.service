@@ -4,8 +4,11 @@ After=network.target
 
 [Service]
 User=scott
+Group=www-data
 WorkingDirectory=/home/scott/gemini-screen
+ExecStartPre=/bin/rm -f /tmp/gemini-screen.sock
 ExecStart=/home/scott/gemini-screen/venv/bin/python /home/scott/gemini-screen/server.py
+ExecStartPost=/bin/chmod 777 /tmp/gemini-screen.sock
 Restart=always
 Environment=GOOGLE_API_KEY=AIzaSyCekuYipR8CCmDnfB6ikDcQ_n9zCvxQgkE
 
