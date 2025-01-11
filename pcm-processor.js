@@ -6,13 +6,20 @@ class PCMProcessor extends AudioWorkletProcessor {
         this.outputBuffer = new Float32Array();
         this.inputBuffer = new Float32Array();
         this.inputSampleCount = 0;
-        this.BUFFER_SIZE = 1024; // Optimized for lower latency
-        this.MAX_BUFFER_SIZE = 16000; // 1 second of audio at 16kHz
+        this.BUFFER_SIZE = 1024;
+        this.MAX_BUFFER_SIZE = 16000;
         this.lastSampleRate = null;
         this.currentSampleRate = null;
         
-        // Anti-aliasing filter coefficients
-        this.filterCoeff = new Float32Array([0.23, 0.54, 0.23]);
+        // Adjusted filter coefficients to allow more high frequencies
+        this.filterCoeff = new Float32Array([0.1, 0.8, 0.1]);
+        
+        // High-frequency boost filter (subtle boost around 2-3kHz)
+        this.highBoostFilter = {
+            prevInput: 0,
+            prevOutput: 0,
+            coefficient: 0.2  // Adjust for more/less boost
+        };
         
         this.port.onmessage = (e) => {
             if (this.mode === 'input' && e.data.type === 'get_buffer') {
@@ -24,10 +31,8 @@ class PCMProcessor extends AudioWorkletProcessor {
             }
         };
 
-        // Get initial sample rate
         this.currentSampleRate = sampleRate;
         console.log(`Initial system sample rate: ${this.currentSampleRate}Hz`);
-        console.log(`Target sample rate: ${this.targetSampleRate}Hz`);
     }
 
     handleSampleRateChange(newSampleRate) {
@@ -50,6 +55,22 @@ class PCMProcessor extends AudioWorkletProcessor {
         return filtered;
     }
 
+    applyHighFrequencyBoost(data) {
+        const result = new Float32Array(data.length);
+        
+        for (let i = 0; i < data.length; i++) {
+            // Simple high-shelf filter
+            const input = data[i];
+            const highFreq = input - this.highBoostFilter.prevInput;
+            this.highBoostFilter.prevInput = input;
+            
+            const boosted = input + (highFreq * this.highBoostFilter.coefficient);
+            result[i] = boosted;
+        }
+        
+        return result;
+    }
+
     resampleAudio(audioData, fromSampleRate, toSampleRate) {
         if (fromSampleRate === toSampleRate) {
             return audioData;
@@ -57,7 +78,6 @@ class PCMProcessor extends AudioWorkletProcessor {
 
         console.log(`Resampling from ${fromSampleRate}Hz to ${toSampleRate}Hz`);
 
-        // Apply anti-aliasing filter before resampling if downsampling
         const shouldFilter = fromSampleRate > toSampleRate;
         const filteredData = shouldFilter ? this.applyAntiAliasingFilter(audioData) : audioData;
         
@@ -65,16 +85,26 @@ class PCMProcessor extends AudioWorkletProcessor {
         const newLength = Math.round(audioData.length / ratio);
         const result = new Float32Array(newLength);
 
-        // Linear interpolation
+        // Improved interpolation using 4-point cubic
         for (let i = 0; i < newLength; i++) {
             const position = i * ratio;
             const index = Math.floor(position);
             const fraction = position - index;
 
-            const current = filteredData[index] || 0;
-            const next = filteredData[index + 1] || current;
+            // Get four points for cubic interpolation
+            const p0 = filteredData[Math.max(0, index - 1)] || 0;
+            const p1 = filteredData[index] || 0;
+            const p2 = filteredData[Math.min(filteredData.length - 1, index + 1)] || p1;
+            const p3 = filteredData[Math.min(filteredData.length - 1, index + 2)] || p2;
 
-            result[i] = current + fraction * (next - current);
+            // Cubic interpolation
+            const a0 = p3 - p2 - p0 + p1;
+            const a1 = p0 - p1 - a0;
+            const a2 = p2 - p0;
+            const a3 = p1;
+
+            const t = fraction;
+            result[i] = a0 * t * t * t + a1 * t * t + a2 * t + a3;
         }
 
         return result;
@@ -84,7 +114,6 @@ class PCMProcessor extends AudioWorkletProcessor {
         if (this.inputBuffer.length > 0) {
             let dataToSend = this.inputBuffer;
             
-            // No resampling needed for input as it's already at target rate
             const buffer = new ArrayBuffer(dataToSend.length * 2);
             const view = new DataView(buffer);
             
@@ -105,22 +134,24 @@ class PCMProcessor extends AudioWorkletProcessor {
     }
 
     handleOutputData(newData) {
-        // Input data is at targetSampleRate (16kHz)
         let processedData = newData;
         
-        // First resample to system rate for output
         if (this.currentSampleRate !== this.targetSampleRate) {
-            console.log(`Converting output from ${this.targetSampleRate}Hz to ${this.currentSampleRate}Hz`);
             processedData = this.resampleAudio(processedData, this.targetSampleRate, this.currentSampleRate);
         }
 
-        // Normalize audio levels
+        // Apply high-frequency boost
+        processedData = this.applyHighFrequencyBoost(processedData);
+
+        // Normalize and increase gain while preventing clipping
         const maxAmp = Math.max(...processedData.map(Math.abs));
-        if (maxAmp > 1) {
-            processedData = processedData.map(s => s / maxAmp * 0.95);
+        if (maxAmp > 0) {
+            const targetGain = 0.9; // Increased from previous 0.95
+            const scalar = Math.min(targetGain / maxAmp, 2.0); // Allow up to 2x boost
+            processedData = processedData.map(s => s * scalar);
         }
 
-        // Debug output levels
+        // Monitor levels
         const rms = Math.sqrt(processedData.reduce((sum, x) => sum + x * x, 0) / processedData.length);
         console.log(`Output audio levels - Peak: ${maxAmp.toFixed(2)}, RMS: ${rms.toFixed(2)}`);
 
