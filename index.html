@@ -76,15 +76,16 @@
     </div>
 
     <script defer>
-        const URL = "ws://localhost:8080/ws";
+        const URL = `wss://${window.location.hostname}/ws`;
         const video = document.getElementById("videoElement");
         const canvas = document.getElementById("canvasElement");
         let context;
 
         // Initialize context here
-        window.addEventListener("load", () => {
+        window.addEventListener("load", async () => {
             context = canvas.getContext("2d");
             setInterval(captureImage, 3000);
+            await connect();  // Only connect WebSocket on load
         });
 
         const startButton = document.getElementById('startButton');
@@ -122,7 +123,7 @@
 
             } catch (err) {
                 console.error("Error accessing the screen: ", err);
-           }
+            }
         } 
 
 
@@ -142,14 +143,9 @@
 
 
 
-        window.addEventListener("load", async () => {
+        // Add screen share button handler
+        document.getElementById('screenShareButton').addEventListener('click', async () => {
             await startScreenShare();
-            //setInterval(captureImage, 3000);
-
-            // Initialize audio context right away
-            await initializeAudioContext();
-
-            connect();
         });
 
         function connect() {
@@ -345,10 +341,6 @@
 
         startButton.addEventListener('click', startAudioInput);
         stopButton.addEventListener('click', stopAudioInput);
-
-        screenShareButton.addEventListener('click', async () => {
-            await startScreenShare();
-        });
 
         class Response {
             constructor(data) {

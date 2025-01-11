@@ -1,0 +1,13 @@
+[Unit]
+Description=Gemini Screen Share Application
+After=network.target
+
+[Service]
+User=scott
+WorkingDirectory=/home/scott/gemini-screen
+ExecStart=/home/scott/gemini-screen/venv/bin/python /home/scott/gemini-screen/server.py
+Restart=always
+Environment=GOOGLE_API_KEY=AIzaSyCekuYipR8CCmDnfB6ikDcQ_n9zCvxQgkE
+
+[Install]
+WantedBy=multi-user.target
