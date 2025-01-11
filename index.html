@@ -543,14 +543,16 @@
                 return;
             }
 
-            console.log("sending setup message");
+            console.log("Preparing setup message");
             const setup_client_message = {
                 setup: {
-                    generation_config: { response_modalities: ["AUDIO"] },
+                    generation_config: { response_modalities: ["AUDIO", "TEXT"] },
                 },
             };
-
+            
+            console.log("Setup message configuration:", setup_client_message);
             webSocket.send(JSON.stringify(setup_client_message));
+            console.log("Setup message sent to websocket");
         }
 
         function sendVoiceMessage(b64PCM) {
@@ -806,17 +808,33 @@
 
         class Response {
             constructor(data) {
+                console.log("Creating Response from raw data:", JSON.stringify(data, null, 2));
+                
                 this.text = null;
                 this.audioData = null;
                 this.endOfTurn = null;
 
+                // Handle text response
                 if (data.text) {
-                    this.text = data.text
+                    console.log("Found text in response data:", data.text);
+                    this.text = data.text;
+                } else {
+                    console.log("No text found in response data");
                 }
 
+                // Handle audio response
                 if (data.audio) {
+                    console.log("Found audio data in response");
                     this.audioData = data.audio;
+                } else {
+                    console.log("No audio found in response data");
                 }
+
+                console.log("Final Response object state:", {
+                    hasText: !!this.text,
+                    textContent: this.text,
+                    hasAudio: !!this.audioData
+                });
             }
         }
     </script>
