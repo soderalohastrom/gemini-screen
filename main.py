@@ -17,7 +17,6 @@ if not API_KEY:
 
 MODEL = "gemini-2.0-flash-exp"  # use your model ID
 
-genai.configure(api_key=API_KEY)
 client = genai.Client(
     http_options={
         'api_version': 'v1alpha'
