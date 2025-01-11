@@ -76,10 +76,18 @@
             background: var(--bg-secondary);
             box-shadow: var(--outset-shadow);
             display: flex;
-            justify-content: space-between;
+            justify-content: center;
             align-items: center;
-            position: relative;
-            z-index: 1;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+
+        .header.collapsed {
+            transform: translateY(-100%);
         }
 
         .app-title {
@@ -87,12 +95,26 @@
             font-weight: 600;
             color: var(--text-primary);
             text-shadow: 1px 1px 2px var(--shadow-color);
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .app-title .material-icons {
+            font-size: 1.8rem;
+            color: var(--accent-primary);
         }
 
         .main-content {
             padding: 2rem;
             max-width: 1400px;
             margin: 0 auto;
+            margin-top: 60px; /* Match header height */
+            transition: margin-top 0.3s ease;
+        }
+
+        .main-content.header-collapsed {
+            margin-top: 0;
         }
 
         .video-portal {
@@ -202,7 +224,10 @@
 
 <body>
     <header class="header">
-        <h1 class="app-title">Gemini Live Demo</h1>
+        <h1 class="app-title">
+            <i class="material-icons">desktop_windows</i>
+            Screen Buddy
+        </h1>
         <button id="themeToggle" class="theme-toggle" onclick="toggleTheme()">
             <span class="material-icons">dark_mode</span>
         </button>
@@ -344,9 +369,37 @@
         const URL = `wss://${window.location.hostname}/ws`;
         const video = document.getElementById("videoElement");
         const canvas = document.getElementById("canvasElement");
+        const header = document.querySelector('.header');
         let context;
         let webSocket = null;
         let isWebSocketReady = false;
+        let isHeaderVisible = true;
+
+        // Header show/hide logic
+        let mouseY = 0;
+        const headerHeight = 60;
+        const showHeaderThreshold = 30;
+
+        document.addEventListener('mousemove', (e) => {
+            mouseY = e.clientY;
+            if (mouseY <= showHeaderThreshold) {
+                header.classList.remove('collapsed');
+                document.querySelector('.main-content').classList.remove('header-collapsed');
+                isHeaderVisible = true;
+            } else if (mouseY > headerHeight && stream) {
+                header.classList.add('collapsed');
+                document.querySelector('.main-content').classList.add('header-collapsed');
+                isHeaderVisible = false;
+            }
+        });
+
+        function collapseHeader() {
+            if (isHeaderVisible) {
+                header.classList.add('collapsed');
+                document.querySelector('.main-content').classList.add('header-collapsed');
+                isHeaderVisible = false;
+            }
+        }
 
         // Initialize context here
         window.addEventListener("load", async () => {
@@ -408,6 +461,9 @@
                         stream = null;
                         video.srcObject = null;
                     };
+
+                    // Collapse header after screen is shared
+                    collapseHeader();
                 }
             } catch (err) {
                 console.error("Error accessing the screen: ", err);
