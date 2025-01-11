@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Screen Buddy</title>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+    <!-- Material Design Icons -->
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <!-- Material Design Lite CSS -->
+    <link rel="stylesheet" href="https://code.getmdl.io/1.3.0/material.indigo-pink.min.css">
+    <!-- Material Design Lite JavaScript -->
+    <script defer src="https://code.getmdl.io/1.3.0/material.min.js"></script>
+
+    <style>
+        /* Root Variables for Light and Dark Mode */
+        :root {
+            --primary-color: #1E88E5;
+            --secondary-color: #1565C0;
+            --accent-color: #FFC107;
+            --background-color: #F5F5F5;
+            --text-color: #212121;
+            --border-color: #BDBDBD;
+            --shadow-color: rgba(0, 0, 0, 0.2);
+        }
+
+        /* Dark Mode Variables */
+        [data-theme="dark"] {
+            --primary-color: #BB86FC;
+            --secondary-color: #3700B3;
+            --accent-color: #03DAC6;
+            --background-color: #121212;
+            --text-color: #E0E0E0;
+            --border-color: #333333;
+            --shadow-color: rgba(0, 0, 0, 0.7);
+        }
+
+        /* Global Styles */
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* Header Styling */
+        .mdl-layout__header {
+            background-color: var(--primary-color);
+            color: #fff;
+        }
+
+        .mdl-layout-title {
+            font-weight: 600;
+            font-size: 24px;
+        }
+
+        /* Dark Mode Header */
+        [data-theme="dark"] .mdl-layout__header {
+            background-color: var(--secondary-color);
+        }
+
+        /* Main Content Styling */
+        .page-content {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            box-sizing: border-box;
+            min-height: calc(100vh - 64px);
+        }
+
+        /* Video Container with 3D Effect */
+        .video-container {
+            position: relative;
+            width: 100%;
+            max-width: 1200px;
+            border-radius: 15px;
+            overflow: hidden;
+            background-color: #000;
+            box-shadow: inset 0 0 10px var(--shadow-color), 0 4px 10px var(--shadow-color);
+        }
+
+        /* Dynamic Video Sizing */
+        #videoElement {
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+
+        /* Responsive Aspect Ratio */
+        .video-container::before {
+            content: '';
+            display: block;
+            padding-top: 56.25%; /* 16:9 Aspect Ratio */
+        }
+
+        .video-container video {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+        }
+
+        /* Control Buttons Styling */
+        .controls {
+            margin-top: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .controls .mdl-button {
+            background-color: var(--primary-color);
+            color: #fff;
+            transition: background-color 0.3s, box-shadow 0.3s;
+            box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        .controls .mdl-button:hover {
+            background-color: var(--secondary-color);
+            box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.3);
+        }
+
+        /* Microphone Button Active State */
+        #micButton.active {
+            background-color: var(--accent-color);
+        }
+
+        /* Chat Log Styling */
+        #chatLog {
+            margin-top: 30px;
+            width: 100%;
+            max-width: 800px;
+            background-color: var(--background-color);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            padding: 15px;
+            box-shadow: inset 0 0 5px var(--shadow-color);
+            overflow-y: auto;
+            max-height: 200px;
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        #chatLog p {
+            margin: 10px 0;
+        }
+
+        /* Toggle Switch Styling */
+        .theme-toggle {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+        }
+
+        .theme-toggle input {
+            display: none;
+        }
+
+        .theme-toggle label {
+            display: flex;
+            align-items: center;
+            cursor: pointer;
+            color: #fff;
+            font-weight: 500;
+            user-select: none;
+        }
+
+        .theme-toggle .toggle-icon {
+            margin-right: 8px;
+            font-size: 24px;
+        }
+
+        /* Responsive Layout Adjustments */
+        @media (max-width: 768px) {
+            .video-container::before {
+                padding-top: 75%; /* Adjust to 4:3 Aspect Ratio */
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .theme-toggle {
+                top: 10px;
+                right: 10px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Application Layout -->
+    <div class="mdl-layout mdl-js-layout mdl-layout--fixed-header">
+        <!-- Header with App Branding and Theme Toggle -->
+        <header class="mdl-layout__header">
+            <div class="mdl-layout__header-row">
+                <span class="mdl-layout-title">Screen Buddy</span>
+                <!-- Spacer to align toggle to the right -->
+                <div class="mdl-layout-spacer"></div>
+                <!-- Theme Toggle Switch -->
+                <div class="theme-toggle">
+                    <input type="checkbox" id="themeSwitch">
+                    <label for="themeSwitch">
+                        <i class="material-icons toggle-icon">brightness_6</i>
+                        <span>Toggle Theme</span>
+                    </label>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="mdl-layout__content">
+            <div class="page-content">
+                <!-- Video Container -->
+                <div class="video-container">
+                    <video id="videoElement" autoplay></video>
+                </div>
+
+                <!-- Control Buttons -->
+                <div class="controls">
+                    <!-- Screen Share Button -->
+                    <button id="screenShareButton" class="mdl-button mdl-js-button mdl-button--fab">
+                        <i class="material-icons">screen_share</i>
+                    </button>
+                    <!-- Microphone Toggle Button -->
+                    <button id="micButton" class="mdl-button mdl-js-button mdl-button--fab">
+                        <i class="material-icons" id="micIcon">mic</i>
+                    </button>
+                </div>
+
+                <!-- Hidden Canvas (for capturing images) -->
+                <canvas id="canvasElement" style="display: none;"></canvas>
+
+                <!-- Enhanced Chat Log -->
+                <div id="chatLog"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- JavaScript Code -->
+    <script defer>
+        // Placeholder for existing JavaScript functionality
+        // Functionality code remains unchanged (ignored as per instructions)
+
+        // Microphone Button State Handling
+        const micButton = document.getElementById('micButton');
+        const micIcon = document.getElementById('micIcon');
+        let isListening = false;
+
+        micButton.addEventListener('click', () => {
+            isListening = !isListening;
+            micButton.classList.toggle('active');
+            micIcon.textContent = isListening ? 'mic_off' : 'mic';
+            // Add functionality to start or stop audio input here
+        });
+
+        // Theme Toggle Handling
+        const themeSwitch = document.getElementById('themeSwitch');
+        const bodyElement = document.body;
+
+        themeSwitch.addEventListener('change', () => {
+            if (themeSwitch.checked) {
+                bodyElement.setAttribute('data-theme', 'dark');
+            } else {
+                bodyElement.removeAttribute('data-theme');
+            }
+        });
+
+        // Persist Theme Selection using Local Storage
+        document.addEventListener('DOMContentLoaded', () => {
+            if (localStorage.getItem('theme') === 'dark') {
+                themeSwitch.checked = true;
+                bodyElement.setAttribute('data-theme', 'dark');
+            }
+        });
+
+        themeSwitch.addEventListener('change', () => {
+            if (themeSwitch.checked) {
+                bodyElement.setAttribute('data-theme', 'dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                bodyElement.removeAttribute('data-theme');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+    </script>
+</body>
+
+</html>

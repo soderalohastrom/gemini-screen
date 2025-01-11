@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html data-theme="light">
+
+<head>
+    <title>Screen Buddy</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+    <style>
+        /* Theme Variables */
+        :root[data-theme="light"] {
+            --bg-primary: #f0f2f5;
+            --bg-secondary: #ffffff;
+            --text-primary: #2c3e50;
+            --text-secondary: #34495e;
+            --accent-primary: #3498db;
+            --accent-secondary: #2980b9;
+            --shadow-color: rgba(0, 0, 0, 0.1);
+            --inset-shadow: inset 2px 2px 5px var(--shadow-color);
+            --outset-shadow: 
+                -5px -5px 10px rgba(255, 255, 255, 0.8),
+                5px 5px 10px var(--shadow-color);
+            --button-hover: rgba(52, 152, 219, 0.1);
+        }
+
+        :root[data-theme="dark"] {
+            --bg-primary: #1a1a1a;
+            --bg-secondary: #2d2d2d;
+            --text-primary: #ecf0f1;
+            --text-secondary: #bdc3c7;
+            --accent-primary: #3498db;
+            --accent-secondary: #2980b9;
+            --shadow-color: rgba(0, 0, 0, 0.3);
+            --inset-shadow: inset 2px 2px 5px var(--shadow-color);
+            --outset-shadow: 
+                -5px -5px 10px rgba(255, 255, 255, 0.05),
+                5px 5px 10px var(--shadow-color);
+            --button-hover: rgba(52, 152, 219, 0.2);
+        }
+
+        /* Reset & Base Styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header Styles */
+        .header {
+            padding: 1rem;
+            background: var(--bg-secondary);
+            box-shadow: var(--outset-shadow);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 1;
+        }
+
+        .app-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            text-shadow: 1px 1px 2px var(--shadow-color);
+        }
+
+        /* Theme Toggle */
+        .theme-toggle {
+            padding: 0.5rem;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            box-shadow: var(--outset-shadow);
+        }
+
+        .theme-toggle:active {
+            box-shadow: var(--inset-shadow);
+        }
+
+        /* Main Content */
+        .main-content {
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        /* Video Container */
+        .video-portal {
+            position: relative;
+            width: 100%;
+            background: var(--bg-secondary);
+            border-radius: 20px;
+            padding: 1rem;
+            box-shadow: var(--outset-shadow);
+            margin-bottom: 2rem;
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: var(--inset-shadow);
+        }
+
+        #videoElement {
+            width: 100%;
+            height: auto;
+            display: block;
+            aspect-ratio: 16/9;
+            background: var(--bg-primary);
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-top: 1.5rem;
+        }
+
+        .control-button {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            cursor: pointer;
+            box-shadow: var(--outset-shadow);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s ease;
+        }
+
+        .control-button:hover {
+            background: var(--button-hover);
+        }
+
+        .control-button:active {
+            box-shadow: var(--inset-shadow);
+        }
+
+        .control-button.active {
+            background: var(--accent-primary);
+            color: white;
+        }
+
+        /* Chat Log */
+        #chatLog {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 15px;
+            box-shadow: var(--inset-shadow);
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        #chatLog p {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border-radius: 8px;
+            background: var(--bg-primary);
+            box-shadow: var(--outset-shadow);
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .main-content {
+                padding: 1rem;
+            }
+
+            .controls {
+                flex-wrap: wrap;
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--accent-primary);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+
+<body>
+    <header class="header">
+        <h1 class="app-title">Screen Buddy</h1>
+        <button class="theme-toggle" onclick="toggleTheme()">
+            <span class="material-icons">dark_mode</span>
+        </button>
+    </header>
+
+    <main class="main-content">
+        <div class="video-portal">
+            <div class="video-container">
+                <video id="videoElement" autoplay></video>
+            </div>
+            <div class="controls">
+                <button class="control-button" id="screenShareButton">
+                    <span class="material-icons">screen_share</span>
+                </button>
+                <button class="control-button" id="micButton">
+                    <span class="material-icons">mic</span>
+                </button>
+            </div>
+        </div>
+
+        <canvas id="canvasElement" style="display: none;"></canvas>
+        <div id="chatLog"></div>
+    </main>
+
+    <script>
+        // Theme Toggle Function
+        function toggleTheme() {
+            const html = document.documentElement;
+            const currentTheme = html.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', newTheme);
+            
+            // Update theme toggle icon
+            const themeIcon = document.querySelector('.theme-toggle .material-icons');
+            themeIcon.textContent = newTheme === 'light' ? 'dark_mode' : 'light_mode';
+        }
+
+        // Microphone Toggle
+        const micButton = document.getElementById('micButton');
+        let isListening = false;
+
+        micButton.addEventListener('click', () => {
+            isListening = !isListening;
+            micButton.classList.toggle('active');
+            micButton.querySelector('.material-icons').textContent = 
+                isListening ? 'mic_off' : 'mic';
+        });
+
+        // Check user's preferred color scheme
+        if (window.matchMedia && 
+            window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
+
+        // Listen for system theme changes
+        window.matchMedia('(prefers-color-scheme: dark)')
+            .addEventListener('change', event => {
+                document.documentElement.setAttribute('data-theme', 
+                    event.matches ? 'dark' : 'light');
+            });
+    </script>
+</body>
+
+</html>
