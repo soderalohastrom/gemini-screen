@@ -6,7 +6,7 @@ class PCMProcessor extends AudioWorkletProcessor {
         this.inputBuffer = new Float32Array();
         this.inputSampleCount = 0;
         this.MAX_BUFFER_SIZE = 16000;
-        this.playbackRate = 2.0; // Speed up playback
+        this.playbackRate = 0.5; // Slow down playback to match 24kHz output
 
         this.port.onmessage = (e) => {
             if (this.mode === 'input' && e.data.type === 'get_buffer') {
@@ -65,7 +65,7 @@ class PCMProcessor extends AudioWorkletProcessor {
                 const samplesNeeded = Math.ceil(outputChannel.length * this.playbackRate);
                 
                 if (this.buffer.length >= samplesNeeded) {
-                    // Read more samples from buffer but output fewer to increase speed
+                    // Read fewer samples from buffer but output more to decrease speed
                     for (let i = 0; i < outputChannel.length; i++) {
                         const readIndex = Math.floor(i * this.playbackRate);
                         outputChannel[i] = this.buffer[readIndex];
