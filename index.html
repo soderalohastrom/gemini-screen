@@ -582,7 +582,7 @@
             const response = new Response(messageData);
 
             if (response.text) {
-                displayMessage("GEMINI: " + response.text);
+                displayMessage(response.text);
             }
             if (response.audioData) {
                 ingestAudioChunkToPlay(response.audioData);
@@ -595,12 +595,12 @@
                 this.audioData = null;
                 this.endOfTurn = null;
 
-                if (data.text) {
-                    this.text = data.text
+                if (data && data.text && data.text.hasOwnProperty('content')) {
+                    this.text = data.text.content;
                 }
 
-                if (data.audio) {
-                    this.audioData = data.audio;
+                if (data && data.audio && data.audio.hasOwnProperty('data')) {
+                    this.audioData = data.audio.data;
                 }
             }
         }
