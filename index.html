@@ -589,6 +589,22 @@
             }
         }
 
+        class Response {
+            constructor(data) {
+                this.text = null;
+                this.audioData = null;
+                this.endOfTurn = null;
+
+                if (data.text) {
+                    this.text = data.text
+                }
+
+                if (data.audio) {
+                    this.audioData = data.audio;
+                }
+            }
+        }
+
         async function initializeAudioWorklet() {
             if (workletInitialized) return;
 
