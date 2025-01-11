@@ -9,6 +9,17 @@ routes = web.RouteTableDef()
 async def index(request):
     return web.FileResponse('index.html')
 
+async def websocket_handler(request):
+    ws = web.WebSocketResponse()
+    await ws.prepare(request)
+    
+    try:
+        await gemini_session_handler(ws)
+    except Exception as e:
+        print(f"WebSocket error: {e}")
+    finally:
+        return ws
+
 async def main():
     app = web.Application()
     app.add_routes(routes)
@@ -17,7 +28,7 @@ async def main():
     app.router.add_static('/', path='./', show_index=True)
     
     # Add WebSocket handler
-    app.router.add_route('GET', '/ws', gemini_session_handler)
+    app.router.add_route('GET', '/ws', websocket_handler)
     
     runner = web.AppRunner(app)
     await runner.setup()
