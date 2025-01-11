@@ -83,22 +83,15 @@
         
         // Initialize AudioContext on user gesture
         async function initAudioContext(sampleRate = 16000) {
-            if (audioContext) {
-                await audioContext.close();
+            if (!audioContext) {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)({
+                    sampleRate: sampleRate
+                });
+                await initializeAudioWorklet();
             }
-            
-            audioContext = new (window.AudioContext || window.webkitAudioContext)({
-                sampleRate: sampleRate
-            });
-            
             if (audioContext.state === "suspended") {
                 await audioContext.resume();
             }
-
-            // Re-initialize worklet nodes with new context
-            workletInitialized = false;
-            await initializeAudioWorklet();
-            
             return audioContext;
         }
 
@@ -124,6 +117,26 @@
         let audioWorkletNode = null;
         let inputWorkletNode = null;
         let interval = null;
+
+        function base64ToArrayBuffer(base64) {
+            const binaryString = window.atob(base64);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            return bytes.buffer;
+        }
+
+        function convertPCM16LEToFloat32(pcmData) {
+            const inputArray = new Int16Array(pcmData);
+            const float32Array = new Float32Array(inputArray.length);
+
+            for (let i = 0; i < inputArray.length; i++) {
+                float32Array[i] = inputArray[i] / 32768;
+            }
+
+            return float32Array;
+        }
 
         // Function to start screen capture
         async function startScreenShare() {
@@ -295,7 +308,16 @@
             }
         }
 
-        function base64ToArrayBuffer(base64) {
+        function arrayBufferToBase64(buffer) {
+            const bytes = new Uint8Array(buffer);
+            let binary = '';
+            for (let i = 0; i < bytes.length; i++) {
+                binary += String.fromCharCode(bytes[i]);
+            }
+            return btoa(binary);
+        }
+
+        async function base64ToArrayBuffer(base64) {
             const binaryString = window.atob(base64);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
@@ -352,7 +374,9 @@
                 source.connect(inputWorkletNode);
 
                 interval = setInterval(() => {
-                    inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                    if (inputWorkletNode && inputWorkletNode.port) {
+                        inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                    }
                 }, 1000); // Reduced interval for more responsive audio
 
                 console.log("Audio input started successfully");
@@ -379,7 +403,9 @@
                         source.connect(inputWorkletNode);
 
                         interval = setInterval(() => {
-                            inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                            if (inputWorkletNode && inputWorkletNode.port) {
+                                inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                            }
                         }, 1000);
 
                         console.log("Audio input started with native sample rate:", streamSettings.sampleRate);
