@@ -478,7 +478,7 @@
         async function initializeAudioWorklet() {
             if (!workletInitialized && audioContext) {
                 try {
-                    await audioContext.audioWorklet.addModule('processor.js');
+                    await audioContext.audioWorklet.addModule('pcm-processor.js');
                     workletInitialized = true;
                     console.log("Audio worklet initialized");
                 } catch (error) {
@@ -536,7 +536,7 @@
                     audioWorkletNode.disconnect();
                 }
                 
-                audioWorkletNode = new AudioWorkletNode(audioContext, 'recorder-worklet');
+                audioWorkletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
                 
                 audioWorkletNode.port.onmessage = (event) => {
                     if (event.data.eventType === 'data') {
