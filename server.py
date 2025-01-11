@@ -21,8 +21,9 @@ async def main():
     
     runner = web.AppRunner(app)
     await runner.setup()
-    site = web.TCPSite(runner, 'localhost', 8080)
-    print("Server started at http://localhost:8080")
+    # Changed from localhost to 0.0.0.0 to allow external connections
+    site = web.TCPSite(runner, '0.0.0.0', 8080)
+    print("Server started at http://0.0.0.0:8080")
     await site.start()
     
     try:
