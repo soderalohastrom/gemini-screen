@@ -42,8 +42,19 @@ async def websocket_handler(request):
         logger.info("WebSocket connection closed")
         return ws
 
+@web.middleware
+async def error_middleware(request, handler):
+    try:
+        response = await handler(request)
+        return response
+    except web.HTTPException:
+        raise
+    except Exception as ex:
+        logger.error(f"Unhandled error: {str(ex)}", exc_info=True)
+        return web.Response(status=500, text=str(ex))
+
 async def main():
-    app = web.Application()
+    app = web.Application(middlewares=[error_middleware])
     
     # Add WebSocket handler first
     app.router.add_route('GET', '/ws', websocket_handler)
@@ -51,12 +62,6 @@ async def main():
     # Then add routes and static files
     app.add_routes(routes)
     app.router.add_static('/', path='./', show_index=True)
-    
-    # Add CORS middleware
-    app.middlewares.append(
-        web.middleware(lambda _, handler: 
-            lambda request: handler(request))
-    )
     
     runner = web.AppRunner(app)
     await runner.setup()
