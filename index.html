@@ -205,8 +205,6 @@
 
         #chatLog p.gemini {
             border-left: 4px solid var(--accent-primary);
-            padding-left: 1rem;
-            margin-left: 0.5rem;
         }
 
         /* Theme Toggle */
@@ -548,7 +546,7 @@
             console.log("sending setup message");
             const setup_client_message = {
                 setup: {
-                    generation_config: { response_modalities: ["AUDIO"] },
+                    generation_config: { response_modalities: ["AUDIO", "TEXT"] },
                 },
             };
 
@@ -618,7 +616,6 @@
                     }
                 };
                 
-                workletInitialized = true;
                 initialized = true;
                 console.log("Audio worklet initialized successfully");
             } catch (error) {
