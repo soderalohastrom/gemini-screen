@@ -2,18 +2,17 @@ class PCMProcessor extends AudioWorkletProcessor {
     constructor(options) {
         super();
         this.mode = options.processorOptions?.mode || 'output';
-        this.targetSampleRate = 48000; // Standard high-quality audio rate
+        this.targetSampleRate = 16000; // Match input sample rate
         this.outputBuffer = new Float32Array();
         this.inputBuffer = new Float32Array();
         this.inputSampleCount = 0;
         this.BUFFER_SIZE = 1024; // Optimized for lower latency
-        this.MAX_BUFFER_SIZE = 48000; // 1 second of audio at 48kHz
+        this.MAX_BUFFER_SIZE = 16000; // 1 second of audio at 16kHz
         this.lastSampleRate = null;
-        this.currentSampleRate = null; // Track current system sample rate
-        this.smoothingFactor = 0.15; // For smooth transitions
+        this.currentSampleRate = null;
         
         // Anti-aliasing filter coefficients
-        this.filterCoeff = new Float32Array([0.23, 0.54, 0.23]); // Simple low-pass filter
+        this.filterCoeff = new Float32Array([0.23, 0.54, 0.23]);
         
         this.port.onmessage = (e) => {
             if (this.mode === 'input' && e.data.type === 'get_buffer') {
@@ -27,7 +26,8 @@ class PCMProcessor extends AudioWorkletProcessor {
 
         // Get initial sample rate
         this.currentSampleRate = sampleRate;
-        console.log(`Initial sample rate: ${this.currentSampleRate}Hz`);
+        console.log(`Initial system sample rate: ${this.currentSampleRate}Hz`);
+        console.log(`Target sample rate: ${this.targetSampleRate}Hz`);
     }
 
     handleSampleRateChange(newSampleRate) {
@@ -45,7 +45,6 @@ class PCMProcessor extends AudioWorkletProcessor {
                          this.filterCoeff[1] * data[i] + 
                          this.filterCoeff[2] * data[i+1];
         }
-        // Handle edges
         filtered[0] = data[0];
         filtered[data.length - 1] = data[data.length - 1];
         return filtered;
@@ -85,15 +84,10 @@ class PCMProcessor extends AudioWorkletProcessor {
         if (this.inputBuffer.length > 0) {
             let dataToSend = this.inputBuffer;
             
-            // Convert from input sample rate to target sample rate
-            if (this.currentSampleRate !== this.targetSampleRate) {
-                dataToSend = this.resampleAudio(dataToSend, this.currentSampleRate, this.targetSampleRate);
-            }
-
+            // No resampling needed for input as it's already at target rate
             const buffer = new ArrayBuffer(dataToSend.length * 2);
             const view = new DataView(buffer);
             
-            // Simple clipping prevention
             dataToSend.forEach((value, index) => {
                 const clampedValue = Math.max(-1, Math.min(1, value));
                 view.setInt16(index * 2, clampedValue * 0x7fff, true);
@@ -111,17 +105,19 @@ class PCMProcessor extends AudioWorkletProcessor {
     }
 
     handleOutputData(newData) {
+        // Input data is at targetSampleRate (16kHz)
         let processedData = newData;
         
-        // Convert from target sample rate to output sample rate
+        // First resample to system rate for output
         if (this.currentSampleRate !== this.targetSampleRate) {
+            console.log(`Converting output from ${this.targetSampleRate}Hz to ${this.currentSampleRate}Hz`);
             processedData = this.resampleAudio(processedData, this.targetSampleRate, this.currentSampleRate);
         }
 
-        // Simple normalization to prevent clipping
+        // Normalize audio levels
         const maxAmp = Math.max(...processedData.map(Math.abs));
         if (maxAmp > 1) {
-            processedData = processedData.map(s => s / maxAmp * 0.95); // Leave some headroom
+            processedData = processedData.map(s => s / maxAmp * 0.95);
         }
 
         // Debug output levels
@@ -190,13 +186,11 @@ class PCMProcessor extends AudioWorkletProcessor {
                         fadeLength
                     );
                     
-                    // Debug output buffer state
                     console.log(`Output buffer state - Length: ${this.outputBuffer.length}, Processing: ${outputChannel.length}`);
                     
                     outputChannel.set(processedBuffer);
                     this.outputBuffer = this.outputBuffer.slice(outputChannel.length);
                 } else {
-                    // Fill with silence if not enough data
                     outputChannel.fill(0);
                     if (this.outputBuffer.length > 0) {
                         const fadeLength = Math.min(128, this.outputBuffer.length / 8);
