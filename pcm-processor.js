@@ -5,7 +5,8 @@ class PCMProcessor extends AudioWorkletProcessor {
         this.buffer = new Float32Array();
         this.inputBuffer = new Float32Array();
         this.inputSampleCount = 0;
-        this.MAX_BUFFER_SIZE = 16000; // 1 second at 16kHz
+        this.MAX_BUFFER_SIZE = 16000;
+        this.playbackRate = 2.0; // Speed up playback
 
         this.port.onmessage = (e) => {
             if (this.mode === 'input' && e.data.type === 'get_buffer') {
@@ -60,12 +61,27 @@ class PCMProcessor extends AudioWorkletProcessor {
             if (output && output[0]) {
                 const outputChannel = output[0];
                 
-                if (this.buffer.length >= outputChannel.length) {
-                    outputChannel.set(this.buffer.slice(0, outputChannel.length));
-                    this.buffer = this.buffer.slice(outputChannel.length);
+                // Calculate how many samples we need based on playback rate
+                const samplesNeeded = Math.ceil(outputChannel.length * this.playbackRate);
+                
+                if (this.buffer.length >= samplesNeeded) {
+                    // Read more samples from buffer but output fewer to increase speed
+                    for (let i = 0; i < outputChannel.length; i++) {
+                        const readIndex = Math.floor(i * this.playbackRate);
+                        outputChannel[i] = this.buffer[readIndex];
+                    }
+                    this.buffer = this.buffer.slice(samplesNeeded);
                 } else if (this.buffer.length > 0) {
-                    outputChannel.set(this.buffer);
+                    // Handle remaining buffer
+                    const remainingSamples = Math.floor(this.buffer.length / this.playbackRate);
+                    for (let i = 0; i < remainingSamples; i++) {
+                        const readIndex = Math.floor(i * this.playbackRate);
+                        outputChannel[i] = this.buffer[readIndex];
+                    }
+                    outputChannel.fill(0, remainingSamples);
                     this.buffer = new Float32Array();
+                } else {
+                    outputChannel.fill(0);
                 }
             }
         }
