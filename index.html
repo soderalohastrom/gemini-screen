@@ -821,22 +821,38 @@
         }
 
         function displayMessage(message) {
-            console.log(message);
-            addParagraphToDiv("chatLog", message);
+            console.log('Displaying message:', message);
+            try {
+                addParagraphToDiv("chatLog", message);
+                console.log('Message added to chat log successfully');
+            } catch (error) {
+                console.error('Error displaying message:', error);
+            }
         }
 
         function addParagraphToDiv(divId, text) {
-            const newParagraph = document.createElement("p");
-            newParagraph.textContent = text;
-            if (text.startsWith("GEMINI:")) {
-                newParagraph.classList.add("gemini");
-                // Remove the "GEMINI:" prefix for cleaner display
-                newParagraph.textContent = text.substring(7).trim();
+            console.log('Adding paragraph to div:', { divId, text });
+            try {
+                const newParagraph = document.createElement("p");
+                newParagraph.textContent = text;
+                if (text.startsWith("GEMINI:")) {
+                    console.log('Adding Gemini styling');
+                    newParagraph.classList.add("gemini");
+                    // Remove the "GEMINI:" prefix for cleaner display
+                    newParagraph.textContent = text.substring(7).trim();
+                }
+                const div = document.getElementById(divId);
+                if (!div) {
+                    throw new Error(`Chat log div not found: ${divId}`);
+                }
+                div.appendChild(newParagraph);
+                // Auto-scroll to bottom
+                div.scrollTop = div.scrollHeight;
+                console.log('Paragraph added and scrolled to bottom');
+            } catch (error) {
+                console.error('Error adding paragraph:', error);
+                throw error;
             }
-            const div = document.getElementById(divId);
-            div.appendChild(newParagraph);
-            // Auto-scroll to bottom
-            div.scrollTop = div.scrollHeight;
         }
 
         // Add click handlers with user gesture handling
