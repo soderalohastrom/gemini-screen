@@ -654,24 +654,31 @@
 
 
         async function initializeAudioWorklet() {
-            if (workletInitialized) return;
+            if (workletInitialized) {
+                console.log('Audio worklet already initialized');
+                return;
+            }
 
             try {
+                console.log('Loading pcm-processor.js module');
                 await audioContext.audioWorklet.addModule("pcm-processor.js");
+                console.log('PCM processor module loaded successfully');
 
                 // Create output worklet node
+                console.log('Creating output worklet node');
                 audioWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
                     processorOptions: {
                         mode: 'output'
                     }
                 });
                 audioWorkletNode.port.onmessage = (e) => {
-                    console.log('Audio worklet message:', e.data);
+                    console.log('Output worklet message:', e.data);
                 };
                 audioWorkletNode.connect(audioContext.destination);
-                console.log('Audio worklet connected to destination');
+                console.log('Output worklet connected to destination');
 
                 // Create input worklet node
+                console.log('Creating input worklet node');
                 inputWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
                     processorOptions: {
                         mode: 'input'
@@ -679,16 +686,24 @@
                 });
                 inputWorkletNode.port.onmessage = (e) => {
                     if (e.data.type === 'audio_data') {
+                        console.log('Received audio data from input worklet');
                         const base64 = arrayBufferToBase64(e.data.buffer);
                         sendVoiceMessage(base64);
+                    } else {
+                        console.log('Received non-audio message from input worklet:', e.data);
                     }
                 };
 
                 initialized = true;
-                console.log("Audio worklet initialized successfully");
+                workletInitialized = true;
+                console.log("Audio worklet system fully initialized");
             } catch (error) {
                 console.error("Failed to initialize audio worklet:", error);
+                console.error("Error details:", error.message);
+                console.error("Error stack:", error.stack);
                 workletInitialized = false;
+                initialized = false;
+                throw error;  // Re-throw to handle in the calling function
             }
         }
 
