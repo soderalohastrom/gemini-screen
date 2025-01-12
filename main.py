@@ -162,8 +162,10 @@ async def gemini_session_handler(websocket):
                         try:
                             logger.debug("Waiting for Gemini response")
                             async for response in session.receive():
+                                logger.debug(f"Raw response from Gemini: {response}")
+                                
                                 if response.server_content is None:
-                                    logger.warning(f'Unhandled server message! - {response}')
+                                    logger.warning(f'Unhandled server message! Full response: {response}')
                                     continue
 
                                 logger.debug(f"Received server content: {response.server_content}")
@@ -172,29 +174,52 @@ async def gemini_session_handler(websocket):
                                     logger.debug(f"Processing model turn with {len(model_turn.parts)} parts")
                                     for part in model_turn.parts:
                                         logger.debug(f"Processing part type: {type(part)}")
+                                        logger.debug(f"Part attributes: {dir(part)}")
+                                        
                                         if hasattr(part, 'text') and part.text is not None:
-                                            logger.debug("Received text response from Gemini")
+                                            logger.debug("Processing text response")
                                             logger.debug(f"Text content: {part.text}")
                                             text_message = json.dumps({"text": part.text})
                                             logger.debug(f"Sending text message to client: {text_message}")
-                                            await websocket.send_str(text_message)
+                                            try:
+                                                await websocket.send_str(text_message)
+                                                logger.debug("Text message sent successfully")
+                                            except Exception as e:
+                                                logger.error(f"Error sending text message: {e}")
+                                                logger.error(f"Error type: {type(e)}")
+                                                logger.error(f"Error traceback: {e.__traceback__}")
+                                                
                                         elif hasattr(part, 'inline_data') and part.inline_data is not None:
-                                            logger.debug(f"Received audio response from Gemini: {part.inline_data.mime_type}")
-                                            base64_audio = base64.b64encode(part.inline_data.data).decode('utf-8')
-                                            await websocket.send_str(json.dumps({
-                                                "audio": base64_audio
-                                            }))
-                                            logger.debug("Audio response sent to client")
+                                            logger.debug("Processing audio response")
+                                            logger.debug(f"Audio mime type: {part.inline_data.mime_type}")
+                                            logger.debug(f"Audio data size: {len(part.inline_data.data)}")
+                                            try:
+                                                base64_audio = base64.b64encode(part.inline_data.data).decode('utf-8')
+                                                audio_message = json.dumps({"audio": base64_audio})
+                                                logger.debug(f"Audio message size: {len(audio_message)}")
+                                                await websocket.send_str(audio_message)
+                                                logger.debug("Audio message sent successfully")
+                                            except Exception as e:
+                                                logger.error(f"Error sending audio message: {e}")
+                                                logger.error(f"Error type: {type(e)}")
+                                                logger.error(f"Error traceback: {e.__traceback__}")
+                                        else:
+                                            logger.warning(f"Unknown part type: {type(part)}")
+                                            logger.warning(f"Part content: {part}")
 
                                 if response.server_content.turn_complete:
                                     logger.debug('Turn complete')
 
                         except Exception as e:
                             logger.error(f"Error receiving from Gemini: {e}")
+                            logger.error(f"Error type: {type(e)}")
+                            logger.error(f"Error traceback: {e.__traceback__}")
                             break
 
                 except Exception as e:
                     logger.error(f"Error in receive_from_gemini: {e}")
+                    logger.error(f"Error type: {type(e)}")
+                    logger.error(f"Error traceback: {e.__traceback__}")
                 finally:
                     logger.info("Gemini connection closed (receive)")
 
