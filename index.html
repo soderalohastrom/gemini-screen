@@ -707,16 +707,29 @@
             try {
                 console.log('Processing audio chunk, length:', base64AudioChunk.length);
                 
+                if (!audioContext) {
+                    throw new Error('Audio context not initialized');
+                }
+                
                 if (audioContext.state === "suspended") {
+                    console.log('Resuming suspended audio context');
                     await audioContext.resume();
                 }
                 console.log('Audio context state:', audioContext.state);
+                
+                if (!audioWorkletNode) {
+                    throw new Error('Audio worklet not initialized');
+                }
                 
                 const arrayBuffer = base64ToArrayBuffer(base64AudioChunk);
                 console.log('Converted to array buffer, size:', arrayBuffer.byteLength);
                 
                 const float32Data = convertPCM16LEToFloat32(arrayBuffer);
                 console.log('Converted to float32, samples:', float32Data.length);
+                console.log('Sample values range:', {
+                    min: Math.min(...float32Data),
+                    max: Math.max(...float32Data)
+                });
 
                 audioWorkletNode.port.postMessage(float32Data);
                 console.log('Audio data sent to worklet');
@@ -724,6 +737,8 @@
                 console.error("Error processing audio chunk:", error);
                 console.error("Error details:", error.message);
                 console.error("Error stack:", error.stack);
+                console.error("Audio context state:", audioContext?.state);
+                console.error("Worklet initialized:", !!audioWorkletNode);
             }
         }
 
