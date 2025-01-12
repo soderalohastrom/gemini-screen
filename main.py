@@ -64,8 +64,14 @@ async def gemini_session_handler(websocket):
                                     for chunk in data["realtime_input"]["media_chunks"]:
                                         if chunk["mime_type"] == "audio/pcm":
                                             logger.debug("Sending audio chunk to Gemini")
-                                            await session.send({"mime_type": "audio/pcm", "data": chunk["data"]})
-                                            logger.debug("Audio chunk sent successfully")
+                                            logger.debug(f"Audio chunk size: {len(chunk['data'])}")
+                                            logger.debug(f"Audio chunk format: {type(chunk['data'])}")
+                                            try:
+                                                await session.send({"mime_type": "audio/pcm", "data": chunk["data"]})
+                                                logger.debug("Audio chunk sent successfully")
+                                            except Exception as e:
+                                                logger.error(f"Error details: {str(e)}")
+                                                logger.error(f"Error type: {type(e)}")
                                         elif chunk["mime_type"] == "image/jpeg":
                                             logger.debug("Sending image to Gemini")
                                             await session.send({"mime_type": "image/jpeg", "data": chunk["data"]})
