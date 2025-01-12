@@ -597,7 +597,7 @@
             });
 
             if (response.text) {
-                displayMessage(response.text);
+                displayMessage("GEMINI: " + response.text);
             }
             if (response.audioData) {
                 ingestAudioChunkToPlay(response.audioData);
