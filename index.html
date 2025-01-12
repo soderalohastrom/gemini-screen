@@ -274,7 +274,7 @@
             const currentTheme = html.getAttribute('data-theme');
             const newTheme = currentTheme === 'light' ? 'dark' : 'light';
             const icon = themeToggle.querySelector('.material-icons');
-            
+
             html.setAttribute('data-theme', newTheme);
             icon.textContent = newTheme === 'light' ? 'dark_mode' : 'light_mode';
         }
@@ -300,7 +300,7 @@
             underrunCount: 0,
             overrunCount: 0
         };
-        
+
         // Initialize AudioContext with proper sample rate handling
         async function initAudioContext(preferredSampleRate = 16000) {
             try {
@@ -308,42 +308,44 @@
                     // Try to match device capabilities
                     const devices = await navigator.mediaDevices.enumerateDevices();
                     const audioDevice = devices.find(device => device.kind === 'audioinput');
-                    
+
                     if (audioDevice) {
                         const constraints = {
                             audio: {
                                 deviceId: audioDevice.deviceId,
-                                sampleRate: { ideal: preferredSampleRate }
+                                sampleRate: {
+                                    ideal: preferredSampleRate
+                                }
                             }
                         };
-                        
+
                         // Test device capabilities
                         const testStream = await navigator.mediaDevices.getUserMedia(constraints);
                         const track = testStream.getAudioTracks()[0];
                         const capabilities = track.getCapabilities();
                         testStream.getTracks().forEach(track => track.stop());
-                        
+
                         // Use supported sample rate
                         const sampleRate = capabilities.sampleRate?.max >= preferredSampleRate ?
                             preferredSampleRate : capabilities.sampleRate?.max || 44100;
-                        
+
                         console.log(`Using sample rate: ${sampleRate}Hz`);
-                        
+
                         audioContext = new (window.AudioContext || window.webkitAudioContext)({
                             sampleRate: sampleRate,
                             latencyHint: 'interactive'
                         });
-                        
+
                         await initializeAudioWorklet();
                     } else {
                         throw new Error('No audio input device found');
                     }
                 }
-                
+
                 if (audioContext.state === "suspended") {
                     await audioContext.resume();
                 }
-                
+
                 return audioContext;
             } catch (error) {
                 console.error('Error initializing audio context:', error);
@@ -361,9 +363,9 @@
                     underrunCount: audioQualityMonitor.underrunCount,
                     overrunCount: audioQualityMonitor.overrunCount
                 };
-                
+
                 console.log('Audio Quality Metrics:', metrics);
-                
+
                 // Reset counters
                 audioQualityMonitor.lastCheckTime = now;
                 audioQualityMonitor.sampleCount = 0;
@@ -371,7 +373,7 @@
                 audioQualityMonitor.underrunCount = 0;
                 audioQualityMonitor.overrunCount = 0;
             }
-            
+
             // Update metrics
             audioQualityMonitor.sampleCount += audioData.length;
             audioData.forEach(sample => {
@@ -458,8 +460,12 @@
                 if (!stream) {
                     stream = await navigator.mediaDevices.getDisplayMedia({
                         video: {
-                            width: { max: 800 },
-                            height: { max: 600 },
+                            width: {
+                                max: 800
+                            },
+                            height: {
+                                max: 600
+                            },
                         },
                     });
 
@@ -493,8 +499,7 @@
                 context.drawImage(video, 0, 0, canvas.width, canvas.height);
                 const imageData = canvas.toDataURL("image/jpeg").split(",")[1].trim();
                 currentFrameB64 = imageData;
-            }
-            else {
+            } else {
                 console.log("no stream or video metadata not loaded");
             }
         }
@@ -546,7 +551,9 @@
             console.log("sending setup message");
             const setup_client_message = {
                 setup: {
-                    generation_config: { response_modalities: ["AUDIO", "TEXT"] },
+                    generation_config: {
+                        response_modalities: ["AUDIO", "TEXT"]
+                    },
                 },
             };
 
@@ -562,13 +569,13 @@
             const payload = {
                 realtime_input: {
                     media_chunks: [{
-                        mime_type: "audio/pcm",
-                        data: b64PCM,
-                    },
-                    {
-                        mime_type: "image/jpeg",
-                        data: currentFrameB64,
-                    },
+                            mime_type: "audio/pcm",
+                            data: b64PCM,
+                        },
+                        {
+                            mime_type: "image/jpeg",
+                            data: currentFrameB64,
+                        },
                     ],
                 },
             };
@@ -595,22 +602,23 @@
                 this.audioData = null;
                 this.endOfTurn = null;
 
-                if (data && data.text && data.text.hasOwnProperty('content')) {
-                    this.text = data.text.content;
+                if (data && data.text) {
+                    this.text = data.text;
                 }
 
-                if (data && data.audio && data.audio.hasOwnProperty('data')) {
-                    this.audioData = data.audio.data;
+                if (data && data.audio) {
+                    this.audioData = data.audio;
                 }
             }
         }
+
 
         async function initializeAudioWorklet() {
             if (workletInitialized) return;
 
             try {
                 await audioContext.audioWorklet.addModule("pcm-processor.js");
-                
+
                 // Create output worklet node
                 audioWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
                     processorOptions: {
@@ -618,7 +626,7 @@
                     }
                 });
                 audioWorkletNode.connect(audioContext.destination);
-                
+
                 // Create input worklet node
                 inputWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
                     processorOptions: {
@@ -631,7 +639,7 @@
                         sendVoiceMessage(base64);
                     }
                 };
-                
+
                 initialized = true;
                 console.log("Audio worklet initialized successfully");
             } catch (error) {
@@ -686,7 +694,9 @@
 
                 // Add sample rate if supported
                 if (deviceCapabilities.sampleRate) {
-                    audioConstraints.sampleRate = { ideal: audioContext.sampleRate };
+                    audioConstraints.sampleRate = {
+                        ideal: audioContext.sampleRate
+                    };
                 }
 
                 // Get new audio stream
@@ -696,7 +706,7 @@
 
                 // Create and configure audio source
                 const source = audioContext.createMediaStreamSource(audioStream);
-                
+
                 // Add gain node for volume control
                 const gainNode = audioContext.createGain();
                 gainNode.gain.value = 1.0; // Adjustable gain
@@ -714,7 +724,9 @@
                 const bufferInterval = Math.floor(1000 * (2048 / audioContext.sampleRate));
                 interval = setInterval(() => {
                     if (inputWorkletNode?.port) {
-                        inputWorkletNode.port.postMessage({ type: 'get_buffer' });
+                        inputWorkletNode.port.postMessage({
+                            type: 'get_buffer'
+                        });
                     }
                 }, bufferInterval);
 
@@ -722,7 +734,7 @@
                 const analyzerNode = audioContext.createAnalyser();
                 analyzerNode.fftSize = 2048;
                 source.connect(analyzerNode);
-                
+
                 const monitorInterval = setInterval(() => {
                     const dataArray = new Float32Array(analyzerNode.frequencyBinCount);
                     analyzerNode.getFloatTimeDomainData(dataArray);
@@ -733,7 +745,7 @@
                     Sample Rate: ${streamSettings.sampleRate}Hz
                     Buffer Interval: ${bufferInterval}ms
                     Monitoring: Active`);
-                
+
             } catch (error) {
                 console.error("Error starting audio input:", error);
                 displayMessage("Error: Could not start audio input. Please check your microphone settings.");
@@ -790,22 +802,6 @@
                 console.error("Error toggling audio:", error);
             }
         });
-
-        class Response {
-            constructor(data) {
-                this.text = null;
-                this.audioData = null;
-                this.endOfTurn = null;
-
-                if (data.text) {
-                    this.text = data.text
-                }
-
-                if (data.audio) {
-                    this.audioData = data.audio;
-                }
-            }
-        }
     </script>
 
 </body>
