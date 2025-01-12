@@ -81,8 +81,17 @@ async def gemini_session_handler(websocket):
                                             logger.debug("Sending audio chunk to Gemini")
                                             logger.debug(f"Audio chunk size: {len(chunk['data'])}")
                                             logger.debug(f"Audio chunk format: {type(chunk['data'])}")
+                                            logger.debug(f"Audio chunk sample: {chunk['data'][:100]}")  # Log first 100 chars
                                             try:
-                                                await session.send({"mime_type": "audio/pcm", "data": chunk["data"]})
+                                                # Ensure data is properly formatted
+                                                audio_payload = {
+                                                    "mime_type": "audio/pcm",
+                                                    "data": chunk["data"],
+                                                    "sample_rate": 16000,  # Add explicit sample rate
+                                                    "encoding": "LINEAR16"  # Add explicit encoding
+                                                }
+                                                logger.debug(f"Sending audio payload: {audio_payload}")
+                                                await session.send(audio_payload)
                                                 logger.debug("Audio chunk sent successfully")
                                             except Exception as e:
                                                 logger.error(f"Error details: {str(e)}")
