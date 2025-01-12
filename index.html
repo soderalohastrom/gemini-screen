@@ -557,7 +557,9 @@
                 },
             };
 
+            console.log('Setup message details:', JSON.stringify(setup_client_message, null, 2));
             webSocket.send(JSON.stringify(setup_client_message));
+            console.log('Setup message sent successfully');
         }
 
         function sendVoiceMessage(b64PCM) {
