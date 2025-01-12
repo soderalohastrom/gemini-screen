@@ -635,7 +635,11 @@
                         mode: 'output'
                     }
                 });
+                audioWorkletNode.port.onmessage = (e) => {
+                    console.log('Audio worklet message:', e.data);
+                };
                 audioWorkletNode.connect(audioContext.destination);
+                console.log('Audio worklet connected to destination');
 
                 // Create input worklet node
                 inputWorkletNode = new AudioWorkletNode(audioContext, "pcm-processor", {
