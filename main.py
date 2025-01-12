@@ -147,9 +147,12 @@ async def gemini_session_handler(websocket):
                                     logger.warning(f'Unhandled server message! - {response}')
                                     continue
 
+                                logger.debug(f"Received server content: {response.server_content}")
                                 model_turn = response.server_content.model_turn
                                 if model_turn:
+                                    logger.debug(f"Processing model turn with {len(model_turn.parts)} parts")
                                     for part in model_turn.parts:
+                                        logger.debug(f"Processing part type: {type(part)}")
                                         if hasattr(part, 'text') and part.text is not None:
                                             logger.debug("Received text response from Gemini")
                                             logger.debug(f"Text content: {part.text}")
