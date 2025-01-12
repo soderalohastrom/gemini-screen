@@ -85,11 +85,13 @@ async def gemini_session_handler(websocket):
                     async for msg in websocket:
                         if msg.type == WSMsgType.TEXT:
                             try:
+                                logger.debug(f"Received text message: {msg.data[:200]}...")  # Log first 200 chars
                                 data = json.loads(msg.data)
                                 if "realtime_input" in data:
+                                    logger.debug("Processing realtime input")
                                     for chunk in data["realtime_input"]["media_chunks"]:
                                         if chunk["mime_type"] == "audio/pcm":
-                                            logger.debug("Sending audio chunk to Gemini")
+                                            logger.debug("Processing audio chunk")
                                             logger.debug(f"Audio chunk size: {len(chunk['data'])}")
                                             logger.debug(f"Audio chunk format: {type(chunk['data'])}")
                                             logger.debug(f"Audio chunk sample: {chunk['data'][:100]}")  # Log first 100 chars
@@ -105,34 +107,51 @@ async def gemini_session_handler(websocket):
                                                 await session.send(audio_payload)
                                                 logger.debug("Audio chunk sent successfully")
                                             except Exception as e:
-                                                logger.error(f"Error details: {str(e)}")
+                                                logger.error(f"Error sending audio chunk: {str(e)}")
                                                 logger.error(f"Error type: {type(e)}")
+                                                logger.error(f"Error traceback: {e.__traceback__}")
                                         elif chunk["mime_type"] == "image/jpeg":
-                                            logger.debug("Sending image to Gemini")
-                                            await session.send({"mime_type": "image/jpeg", "data": chunk["data"]})
-                                            logger.debug("Image sent successfully")
+                                            logger.debug("Processing image chunk")
+                                            logger.debug(f"Image data size: {len(chunk['data'])}")
+                                            try:
+                                                await session.send({"mime_type": "image/jpeg", "data": chunk["data"]})
+                                                logger.debug("Image sent successfully")
+                                            except Exception as e:
+                                                logger.error(f"Error sending image: {str(e)}")
+                                                logger.error(f"Error type: {type(e)}")
+                                                logger.error(f"Error traceback: {e.__traceback__}")
+                                else:
+                                    logger.debug(f"Received non-realtime message: {json.dumps(data, indent=2)}")
                             except json.JSONDecodeError as e:
                                 logger.error(f"Error decoding JSON: {e}")
+                                logger.error(f"Raw message data: {msg.data[:200]}...")
                             except Exception as e:
-                                logger.error(f"Error sending to Gemini: {e}")
+                                logger.error(f"Error processing message: {e}")
+                                logger.error(f"Error type: {type(e)}")
+                                logger.error(f"Error traceback: {e.__traceback__}")
                         elif msg.type == WSMsgType.BINARY:
-                            logger.debug("Received binary message, ignoring")
+                            logger.debug(f"Received binary message of size: {len(msg.data)}")
                             continue
                         elif msg.type == WSMsgType.ERROR:
                             logger.error(f"WebSocket error: {msg.data}")
+                            logger.error(f"WebSocket state: {websocket.closed}")
                             break
                         elif msg.type in (WSMsgType.CLOSE, WSMsgType.CLOSING, WSMsgType.CLOSED, 8):
-                            logger.info("WebSocket closing")
+                            logger.info(f"WebSocket closing with code: {msg.data if hasattr(msg, 'data') else 'unknown'}")
                             break
                         elif msg.type == WSMsgType.PING:
+                            logger.debug("Received PING, sending PONG")
                             await websocket.pong()
                         elif msg.type == WSMsgType.PONG:
+                            logger.debug("Received PONG")
                             continue
                         else:
-                            logger.debug(f"Unhandled message type: {msg.type}")
+                            logger.warning(f"Unhandled message type: {msg.type}")
                             continue
                 except Exception as e:
                     logger.error(f"Error in send_to_gemini: {e}")
+                    logger.error(f"Error type: {type(e)}")
+                    logger.error(f"Error traceback: {e.__traceback__}")
                 finally:
                     logger.info("send_to_gemini closed")
 
