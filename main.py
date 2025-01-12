@@ -19,8 +19,16 @@ MODEL = "gemini-2.0-flash-exp"  # use your model ID
 
 client = genai.Client(
     http_options={
-        'api_version': 'v1alpha'
+        'api_version': 'v1alpha',
+        'timeout': 300,  # 5 minutes timeout
+        'retries': 3
     }
+)
+
+# Configure default generation settings
+genai.configure(
+    api_key=API_KEY,
+    transport='rest'
 )
 
 async def gemini_session_handler(websocket):
