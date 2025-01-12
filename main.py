@@ -14,14 +14,7 @@ if not API_KEY:
 MODEL = "gemini-2.0-flash-exp"  # use your model ID
 
 # Initialize Gemini client with API key
-client = genai.Client(
-    api_key=API_KEY,
-    http_options={
-        'api_version': 'v1alpha',
-        'timeout': 300,  # 5 minutes timeout
-        'retries': 3
-    }
-)
+client = genai.Client()
 
 # Set up logging with more detailed format
 logging.basicConfig(
