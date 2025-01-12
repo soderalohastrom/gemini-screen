@@ -143,7 +143,10 @@ async def gemini_session_handler(websocket):
                                     for part in model_turn.parts:
                                         if hasattr(part, 'text') and part.text is not None:
                                             logger.debug("Received text response from Gemini")
-                                            await websocket.send_str(json.dumps({"text": part.text}))
+                                            logger.debug(f"Text content: {part.text}")
+                                            text_message = json.dumps({"text": part.text})
+                                            logger.debug(f"Sending text message to client: {text_message}")
+                                            await websocket.send_str(text_message)
                                         elif hasattr(part, 'inline_data') and part.inline_data is not None:
                                             logger.debug(f"Received audio response from Gemini: {part.inline_data.mime_type}")
                                             base64_audio = base64.b64encode(part.inline_data.data).decode('utf-8')
