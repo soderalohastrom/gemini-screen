@@ -66,9 +66,18 @@ async def gemini_session_handler(websocket):
         
         logger.debug(f"Final config being sent to Gemini: {json.dumps(config, indent=2)}")
 
-        logger.info("Connecting to Gemini API...")
-        async with client.aio.live.connect(model=MODEL, config=config) as session:
-            logger.info("Connected to Gemini API")
+        logger.info("Connecting to Gemini API with config:")
+        logger.debug(f"Model: {MODEL}")
+        logger.debug(f"Generation config: {json.dumps(config.get('generation_config', {}), indent=2)}")
+        logger.debug(f"System instruction: {config.get('system_instruction', '')}")
+        
+        try:
+            async with client.aio.live.connect(model=MODEL, config=config) as session:
+                logger.info("Connected to Gemini API successfully")
+        except Exception as e:
+            logger.error(f"Failed to connect to Gemini API: {str(e)}")
+            logger.error(f"Error type: {type(e)}")
+            raise
 
             async def send_to_gemini():
                 """Sends messages from the client websocket to the Gemini API."""
