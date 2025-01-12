@@ -35,9 +35,6 @@ logger = logging.getLogger(__name__)
 logger.info("Starting Gemini Screen Share Application")
 logger.debug(f"API Key configured: {'Yes' if API_KEY else 'No'}")
 logger.debug(f"Using model: {MODEL}")
-logger.debug(f"API version: {client.http_options.get('api_version', 'unknown')}")
-logger.debug(f"Client timeout: {client.http_options.get('timeout')}s")
-logger.debug(f"Client retries: {client.http_options.get('retries')}")
 
 async def gemini_session_handler(websocket):
     """Handles the interaction with Gemini API within a websocket session.
