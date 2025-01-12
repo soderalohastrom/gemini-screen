@@ -25,12 +25,6 @@ client = genai.Client(
     }
 )
 
-# Configure default generation settings
-genai.configure(
-    api_key=API_KEY,
-    transport='rest'
-)
-
 async def gemini_session_handler(websocket):
     """Handles the interaction with Gemini API within a websocket session.
 
