@@ -49,6 +49,10 @@ async def gemini_session_handler(websocket):
             config["generation_config"]["response_modalities"] = ["AUDIO", "TEXT"]
             logger.debug("Added default response modalities")
             
+        # Add language configuration
+        config["generation_config"]["language"] = "en"
+        logger.debug("Added language configuration")
+            
         config["system_instruction"] = """You are a helpful assistant for screen sharing sessions. Your role is to:
                                         1) Analyze and describe the content being shared on screen
                                         2) Answer questions about the shared content
