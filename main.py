@@ -38,10 +38,10 @@ async def gemini_session_handler(websocket):
     try:
         config_message = await websocket.receive_str()
         logger.debug(f"Received config message: {config_message}")
-        
+
         config_data = json.loads(config_message)
         logger.debug(f"Parsed config data: {json.dumps(config_data, indent=2)}")
-        
+
         config = config_data.get("setup", {})
         config["system_instruction"] = """You are a helpful assistant for screen sharing sessions. Your role is to:
                                         1) Analyze and describe the content being shared on screen
@@ -54,11 +54,11 @@ async def gemini_session_handler(websocket):
         logger.debug(f"Model: {MODEL}")
         logger.debug(f"Generation config: {json.dumps(config.get('generation_config', {}), indent=2)}")
         logger.debug(f"System instruction: {config.get('system_instruction', '')}")
-        
+
         try:
             async with client.aio.live.connect(model=MODEL, config=config) as session:
                 logger.info("Connected to Gemini API successfully")
-                
+
                 async def send_to_gemini():
                     """Sends messages from the client websocket to the Gemini API."""
                     try:
@@ -123,7 +123,7 @@ async def gemini_session_handler(websocket):
                                 logger.debug("Waiting for Gemini response")
                                 async for response in session.receive():
                                     logger.debug(f"Raw response from Gemini: {response}")
-                                    
+
                                     if response.server_content is None:
                                         logger.warning(f'Unhandled server message! Full response: {response}')
                                         continue
@@ -135,7 +135,7 @@ async def gemini_session_handler(websocket):
                                         for part in model_turn.parts:
                                             logger.debug(f"Processing part type: {type(part)}")
                                             logger.debug(f"Part attributes: {dir(part)}")
-                                            
+
                                             if hasattr(part, 'text') and part.text is not None:
                                                 logger.debug("Processing text response")
                                                 logger.debug(f"Text content: {part.text}")
@@ -148,7 +148,7 @@ async def gemini_session_handler(websocket):
                                                     logger.error(f"Error sending text message: {e}")
                                                     logger.error(f"Error type: {type(e)}")
                                                     logger.error(f"Error traceback: {e.__traceback__}")
-                                                    
+
                                             elif hasattr(part, 'inline_data') and part.inline_data is not None:
                                                 logger.debug("Processing audio response")
                                                 logger.debug(f"Audio mime type: {part.inline_data.mime_type}")
@@ -186,7 +186,7 @@ async def gemini_session_handler(websocket):
                 # Start both tasks
                 send_task = asyncio.create_task(send_to_gemini())
                 receive_task = asyncio.create_task(receive_from_gemini())
-                
+
                 try:
                     await asyncio.gather(send_task, receive_task)
                 except asyncio.CancelledError:
