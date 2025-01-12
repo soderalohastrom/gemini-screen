@@ -610,14 +610,20 @@
                 this.audioData = null;
                 this.endOfTurn = null;
 
-                if (data && data.text) {
-                    this.text = data.text;
-                    console.log('Received text:', data.text);
-                }
+                if (data && typeof data === 'object') {
+                    if ('text' in data) {
+                        this.text = data.text;
+                        console.log('Received text:', data.text);
+                    }
 
-                if (data && data.audio) {
-                    this.audioData = data.audio;
-                    console.log('Received audio:', data.audio.slice(0, 50) + '...');
+                    if ('audio' in data) {
+                        this.audioData = data.audio;
+                        console.log('Received audio data of length:', data.audio.length);
+                    }
+
+                    console.log('Full response data:', JSON.stringify(data, null, 2));
+                } else {
+                    console.warn('Invalid response data:', data);
                 }
             }
         }
