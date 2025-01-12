@@ -671,15 +671,25 @@
 
         async function ingestAudioChunkToPlay(base64AudioChunk) {
             try {
+                console.log('Processing audio chunk, length:', base64AudioChunk.length);
+                
                 if (audioContext.state === "suspended") {
                     await audioContext.resume();
                 }
+                console.log('Audio context state:', audioContext.state);
+                
                 const arrayBuffer = base64ToArrayBuffer(base64AudioChunk);
+                console.log('Converted to array buffer, size:', arrayBuffer.byteLength);
+                
                 const float32Data = convertPCM16LEToFloat32(arrayBuffer);
+                console.log('Converted to float32, samples:', float32Data.length);
 
                 audioWorkletNode.port.postMessage(float32Data);
+                console.log('Audio data sent to worklet');
             } catch (error) {
                 console.error("Error processing audio chunk:", error);
+                console.error("Error details:", error.message);
+                console.error("Error stack:", error.stack);
             }
         }
 
