@@ -601,20 +601,30 @@
         }
 
         function receiveMessage(event) {
-            const messageData = JSON.parse(event.data);
-            console.log('Raw message data:', messageData);
-            
-            const response = new Response(messageData);
-            console.log('Parsed response:', {
-                hasText: !!response.text,
-                hasAudio: !!response.audioData
-            });
+            try {
+                console.log('Received WebSocket message:', event);
+                const messageData = JSON.parse(event.data);
+                console.log('Raw message data:', messageData);
+                
+                const response = new Response(messageData);
+                console.log('Parsed response:', {
+                    hasText: !!response.text,
+                    hasAudio: !!response.audioData,
+                    text: response.text,
+                    audioLength: response.audioData ? response.audioData.length : 0
+                });
 
-            if (response.text) {
-                displayMessage("GEMINI: " + response.text);
-            }
-            if (response.audioData) {
-                ingestAudioChunkToPlay(response.audioData);
+                if (response.text) {
+                    console.log('Displaying text message:', response.text);
+                    displayMessage("GEMINI: " + response.text);
+                }
+                if (response.audioData) {
+                    console.log('Processing audio chunk of length:', response.audioData.length);
+                    ingestAudioChunkToPlay(response.audioData);
+                }
+            } catch (error) {
+                console.error('Error processing message:', error);
+                console.error('Error stack:', error.stack);
             }
         }
 
