@@ -511,39 +511,53 @@
 
         function connect() {
             return new Promise((resolve, reject) => {
-                console.log("connecting: ", URL);
+                console.log("Attempting WebSocket connection to:", URL);
 
                 if (webSocket && webSocket.readyState !== WebSocket.CLOSED) {
+                    console.log("Closing existing WebSocket connection");
                     webSocket.close();
                 }
 
-                webSocket = new WebSocket(URL);
+                try {
+                    console.log("Creating new WebSocket instance");
+                    webSocket = new WebSocket(URL);
 
-                webSocket.onclose = (event) => {
-                    console.log("websocket closed: ", event);
-                    isWebSocketReady = false;
-                    setTimeout(() => connect(), 1000); // Attempt to reconnect after 1 second
-                };
+                    webSocket.onclose = (event) => {
+                        console.log("WebSocket closed with code:", event.code);
+                        console.log("Close reason:", event.reason);
+                        isWebSocketReady = false;
+                        console.log("Scheduling reconnection attempt in 1 second");
+                        setTimeout(() => connect(), 1000);
+                    };
 
-                webSocket.onerror = (event) => {
-                    console.log("websocket error: ", event);
-                    isWebSocketReady = false;
-                };
+                    webSocket.onerror = (event) => {
+                        console.error("WebSocket error:", event);
+                        console.error("WebSocket state:", webSocket.readyState);
+                        isWebSocketReady = false;
+                    };
 
-                webSocket.onopen = async (event) => {
-                    console.log("websocket open: ", event);
-                    isWebSocketReady = true;
-                    // Send setup message immediately after setting ready state
-                    try {
-                        await sendInitialSetupMessage();
-                        console.log("Setup message sent successfully");
-                    } catch (error) {
-                        console.error("Error sending setup message:", error);
-                    }
-                    resolve();
-                };
+                    webSocket.onopen = async (event) => {
+                        console.log("WebSocket connection established");
+                        isWebSocketReady = true;
+                        // Send setup message immediately after setting ready state
+                        try {
+                            await sendInitialSetupMessage();
+                            console.log("Setup message sent successfully");
+                        } catch (error) {
+                            console.error("Error sending setup message:", error);
+                            console.error("Error details:", error.message);
+                            console.error("Error stack:", error.stack);
+                        }
+                        resolve();
+                    };
 
-                webSocket.onmessage = receiveMessage;
+                    webSocket.onmessage = receiveMessage;
+                } catch (error) {
+                    console.error("Error creating WebSocket:", error);
+                    console.error("Error details:", error.message);
+                    console.error("Error stack:", error.stack);
+                    reject(error);
+                }
             });
         }
 
