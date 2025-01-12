@@ -31,16 +31,23 @@ async def gemini_session_handler(websocket):
     """
     try:
         config_message = await websocket.receive_str()
+        logger.debug(f"Received config message: {config_message}")
+        
         config_data = json.loads(config_message)
+        logger.debug(f"Parsed config data: {json.dumps(config_data, indent=2)}")
+        
         config = config_data.get("setup", {})
+        logger.debug(f"Initial config: {json.dumps(config, indent=2)}")
         
         # Add default configuration if not provided
         if "generation_config" not in config:
             config["generation_config"] = {}
+            logger.debug("Added default generation_config")
         
         # Ensure both modalities are requested
         if "response_modalities" not in config["generation_config"]:
             config["generation_config"]["response_modalities"] = ["AUDIO", "TEXT"]
+            logger.debug("Added default response modalities")
             
         config["system_instruction"] = """You are a helpful assistant for screen sharing sessions. Your role is to:
                                         1) Analyze and describe the content being shared on screen
@@ -48,6 +55,8 @@ async def gemini_session_handler(websocket):
                                         3) Provide relevant information and context about what's being shown
                                         4) Assist with technical issues related to screen sharing
                                         5) Maintain a professional and helpful tone. Focus on being concise and clear in your responses."""
+        
+        logger.debug(f"Final config being sent to Gemini: {json.dumps(config, indent=2)}")
 
         logger.info("Connecting to Gemini API...")
         async with client.aio.live.connect(model=MODEL, config=config) as session:
