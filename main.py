@@ -33,6 +33,15 @@ async def gemini_session_handler(websocket):
         config_message = await websocket.receive_str()
         config_data = json.loads(config_message)
         config = config_data.get("setup", {})
+        
+        # Add default configuration if not provided
+        if "generation_config" not in config:
+            config["generation_config"] = {}
+        
+        # Ensure both modalities are requested
+        if "response_modalities" not in config["generation_config"]:
+            config["generation_config"]["response_modalities"] = ["AUDIO", "TEXT"]
+            
         config["system_instruction"] = """You are a helpful assistant for screen sharing sessions. Your role is to:
                                         1) Analyze and describe the content being shared on screen
                                         2) Answer questions about the shared content
