@@ -586,7 +586,13 @@
 
         function receiveMessage(event) {
             const messageData = JSON.parse(event.data);
+            console.log('Raw message data:', messageData);
+            
             const response = new Response(messageData);
+            console.log('Parsed response:', {
+                hasText: !!response.text,
+                hasAudio: !!response.audioData
+            });
 
             if (response.text) {
                 displayMessage(response.text);
@@ -604,10 +610,12 @@
 
                 if (data && data.text) {
                     this.text = data.text;
+                    console.log('Received text:', data.text);
                 }
 
                 if (data && data.audio) {
                     this.audioData = data.audio;
+                    console.log('Received audio:', data.audio.slice(0, 50) + '...');
                 }
             }
         }
